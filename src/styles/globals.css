@@ -1,0 +1,130 @@
+@import "tailwindcss";
+
+:root {
+  color: #141821;
+  background: #f5f7fb;
+  font-family:
+    Inter, "Noto Sans JP", "Hiragino Sans", "Yu Gothic", "Meiryo", system-ui,
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --brand-red: #ef1f24;
+  --brand-blue: #0b63ce;
+  --ink: #141821;
+  --muted: #667085;
+  --line: #d9e1ee;
+  --soft-red: #fff1f0;
+  --soft-blue: #eef6ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100dvh;
+  margin: 0;
+}
+
+button,
+textarea,
+input {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-shell {
+  position: relative;
+  width: min(100%, 430px);
+  min-height: 100dvh;
+  margin: 0 auto;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top right, rgba(11, 99, 206, 0.07), transparent 28rem),
+    #ffffff;
+}
+
+.app-content {
+  min-height: 100dvh;
+  padding: calc(env(safe-area-inset-top) + 14px) 18px calc(96px + env(safe-area-inset-bottom));
+}
+
+.app-content.display-mode {
+  padding-bottom: calc(26px + env(safe-area-inset-bottom));
+}
+
+.bottom-nav {
+  position: fixed;
+  z-index: 40;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: min(100%, 430px);
+  margin: 0 auto;
+  padding: 9px 12px calc(9px + env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(217, 225, 238, 0.9);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(18px);
+}
+
+.glass-card {
+  border: 1px solid rgba(217, 225, 238, 0.94);
+  background: rgba(255, 255, 255, 0.93);
+  box-shadow: 0 14px 34px rgba(18, 35, 64, 0.07);
+}
+
+.phrase-hero {
+  border: 1px solid rgba(239, 31, 36, 0.18);
+  background:
+    radial-gradient(circle at 88% 32%, rgba(239, 31, 36, 0.12), transparent 6.5rem),
+    linear-gradient(135deg, rgba(255, 241, 240, 0.92), rgba(255, 255, 255, 0.96));
+}
+
+.soft-blue {
+  border: 1px solid rgba(11, 99, 206, 0.18);
+  background:
+    radial-gradient(circle at 84% 16%, rgba(11, 99, 206, 0.11), transparent 6rem),
+    rgba(255, 255, 255, 0.94);
+}
+
+.wave-bar {
+  display: block;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--brand-red);
+}
+
+.display-kanji {
+  font-size: clamp(2.4rem, 14vw, 4.6rem);
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+@media (min-width: 480px) {
+  body {
+    padding: 18px 0;
+  }
+
+  .app-shell {
+    min-height: calc(100dvh - 36px);
+    border: 1px solid rgba(196, 207, 225, 0.95);
+    border-radius: 30px;
+    box-shadow: 0 26px 70px rgba(29, 47, 79, 0.16);
+  }
+
+  .app-content {
+    min-height: calc(100dvh - 36px);
+  }
+
+  .bottom-nav {
+    bottom: 18px;
+    border: 1px solid rgba(217, 225, 238, 0.9);
+    border-top: 1px solid rgba(217, 225, 238, 0.9);
+    border-radius: 0 0 30px 30px;
+  }
+}

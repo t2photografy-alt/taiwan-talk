@@ -1,0 +1,10 @@
+{
+  "name": "Taiwan Talk",
+  "short_name": "Taiwan Talk",
+  "description": "気持ちがちゃんと伝わる、やさしい会話サポートアプリ",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ef1f24",
+  "lang": "ja"
+}

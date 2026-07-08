@@ -1,0 +1,16 @@
+node_modules
+dist
+.vite
+.env
+.env.local
+.env.*
+.env.*.local
+*.local
+*.tsbuildinfo
+.vercel
+work
+outputs
+playwright-report
+test-results
+.DS_Store
+Thumbs.db

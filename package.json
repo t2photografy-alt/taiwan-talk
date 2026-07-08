@@ -1,0 +1,31 @@
+{
+  "name": "taiwan-talk",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "qa:flow": "playwright test tests/e2e/user-flows.spec.ts",
+    "qa:flow:headed": "playwright test tests/e2e/user-flows.spec.ts --headed",
+    "qa:screenshots": "playwright test tests/e2e/screenshots.spec.ts"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "latest",
+    "@vitejs/plugin-react": "latest",
+    "lucide-react": "latest",
+    "motion": "latest",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwindcss": "latest",
+    "vite": "latest"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "typescript": "latest"
+  }
+}
