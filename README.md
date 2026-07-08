@@ -2,6 +2,15 @@
 
 Taiwan Talk is a Taiwan Mandarin and Japanese conversation support app for quickly creating, saving, showing, and practicing phrases.
 
+## Phase 1 Status
+
+- Production URL: https://taiwan-talk.vercel.app/
+- Phase 1 status: Public QA completed
+- `npm run build`: passed
+- `npm run qa:flow`: passed
+- `npm run qa:screenshots`: passed
+- Production QA: `BASE_URL=https://taiwan-talk.vercel.app npm run qa:flow` passed with 7 tests
+
 ## Tech Stack
 
 - React

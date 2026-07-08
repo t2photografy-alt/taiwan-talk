@@ -45,8 +45,20 @@ Install Command: npm install
 
 ## Production QA
 
+Production URL:
+
+```txt
+https://taiwan-talk.vercel.app/
+```
+
 ```bash
 BASE_URL=<Vercel URL> npm run qa:flow
+```
+
+Published Phase 1 app:
+
+```bash
+BASE_URL=https://taiwan-talk.vercel.app npm run qa:flow
 ```
 
 PowerShell:
@@ -55,3 +67,12 @@ PowerShell:
 $env:BASE_URL="<Vercel URL>"
 npm run qa:flow
 ```
+
+Published Phase 1 app:
+
+```powershell
+$env:BASE_URL="https://taiwan-talk.vercel.app"
+npm run qa:flow
+```
+
+Latest production QA result: 7 passed.
