@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import OpenAI from 'openai';
 import type {
   GenerateConversationErrorCode,
@@ -5,8 +6,8 @@ import type {
   GenerateConversationRequest,
   GenerateConversationResponse,
   GeneratedConversationResult,
-} from '../../src/lib/conversation/apiTypes';
-import type { LanguageCode, PhraseCategory, Tone } from '../../src/lib/conversation/types';
+} from '../../src/lib/conversation/apiTypes.js';
+import type { LanguageCode, PhraseCategory, Tone } from '../../src/lib/conversation/types.js';
 
 type ApiRequest = {
   method?: string;
