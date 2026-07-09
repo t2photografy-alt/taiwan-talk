@@ -31,6 +31,7 @@ export type TranslationKey =
   | 'cta.save'
   | 'cta.savePhrase'
   | 'cta.saved'
+  | 'ai.needsNativeCheckNote'
   | 'settings.deviceCheck'
   | 'settings.deviceCheckDescription'
   | 'settings.speech'

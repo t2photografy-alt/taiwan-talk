@@ -58,7 +58,10 @@ export function DisplayPage({ phrase, isSaved, onBack, onCopy, onSave, onPractic
             {isSaved ? <Check aria-hidden="true" size={14} /> : <Bookmark aria-hidden="true" size={14} />}
             {isSaved ? t('cta.saved') : 'まだ保存していません'}
           </span>
-          <h1 className="display-kanji whitespace-pre-line font-black tracking-normal text-[#141821]">
+          <h1
+            className="display-kanji whitespace-pre-line font-black tracking-normal text-[#141821]"
+            data-testid="display-result-text"
+          >
             {phrase.resultText}
           </h1>
           {phrase.pinyin ? (
@@ -66,7 +69,10 @@ export function DisplayPage({ phrase, isSaved, onBack, onCopy, onSave, onPractic
               {phrase.pinyin}
             </p>
           ) : null}
-          <p className="mt-6 rounded-[18px] bg-[#f3f6fb] p-4 text-base font-bold leading-relaxed text-[#344054]">
+          <p
+            className="mt-6 rounded-[18px] bg-[#f3f6fb] p-4 text-base font-bold leading-relaxed text-[#344054]"
+            data-testid="display-source-text"
+          >
             {phrase.sourceText}
           </p>
         </section>
@@ -88,7 +94,12 @@ export function DisplayPage({ phrase, isSaved, onBack, onCopy, onSave, onPractic
         >
           {t('cta.save')}
         </PrimaryButton>
-        <PrimaryButton icon={<Mic2 aria-hidden="true" size={18} />} variant="blue" onClick={() => onPractice(phrase)}>
+        <PrimaryButton
+          data-testid="display-practice-button"
+          icon={<Mic2 aria-hidden="true" size={18} />}
+          variant="blue"
+          onClick={() => onPractice(phrase)}
+        >
           {t('nav.practice')}
         </PrimaryButton>
       </footer>

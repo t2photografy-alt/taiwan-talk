@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page, test } from '@playwright/test';
+import { expect, type Locator, type Page, type Response, test } from '@playwright/test';
 
 const forbiddenTerms = [
   'オシカッツ',
@@ -28,6 +28,13 @@ const guardedButtonLabels = [
   '女性寄り',
   '男性寄り',
 ];
+
+const photoInput = 'また写真撮らせてください！';
+const photoIntentPattern = /拍|照|照片|相片/;
+const replyIntentPattern = /下次|再|一起|玩/;
+const cjkPattern = /[\u3400-\u9fff]/;
+const kanaPattern = /[ぁ-んァ-ン]/;
+const generationWaitMs = 60_000;
 
 async function clearSavedPhrases(page: Page) {
   await page.goto('/');
@@ -248,14 +255,72 @@ async function expectLogoHealthy(page: Page, expectedSize: 'header' | 'compact' 
   expect(objectFit).toBe('contain');
 }
 
+function normalizeText(text: string) {
+  return text.replace(/\s+/g, ' ').trim();
+}
+
+function waitForMaybeGenerationResponse(page: Page) {
+  return page
+    .waitForResponse(
+      (candidate) =>
+        candidate.url().includes('/api/conversation/generate') &&
+        candidate.request().method() === 'POST',
+      { timeout: generationWaitMs },
+    )
+    .catch(() => null);
+}
+
+async function expectNativeCheckFromApiIfAvailable(response: Response | null) {
+  if (!response || response.status() !== 200) {
+    return;
+  }
+
+  const payload = (await response.json()) as {
+    ok?: unknown;
+    result?: {
+      resultText?: unknown;
+      pinyin?: unknown;
+      needsNativeCheck?: unknown;
+      reviewStatus?: unknown;
+    };
+  };
+
+  expect(payload.ok).toBe(true);
+  expect(payload.result?.resultText).toEqual(expect.any(String));
+  expect(payload.result?.pinyin).toEqual(expect.any(String));
+  expect(payload.result?.needsNativeCheck).toBe(true);
+  expect(payload.result?.reviewStatus).toBe('needs-native-check');
+}
+
+async function readGeneratedTaiwanText(locator: Locator) {
+  await expect(locator).toBeVisible({ timeout: generationWaitMs });
+  await expect.poll(async () => normalizeText(await locator.innerText()), { timeout: generationWaitMs }).not.toBe('');
+
+  const text = (await locator.innerText()).trim();
+  expect(text).toMatch(cjkPattern);
+  expect(text).not.toMatch(kanaPattern);
+  return text;
+}
+
 async function createAndSavePhotoPhrase(page: Page) {
   await page.goto('/compose');
-  await page.getByLabel(/話したいこと/).fill('また写真撮らせてください！');
-  await page.getByRole('button', { name: '自然な言い方にする' }).click();
-  await expect(page.getByText('我們一起拍照吧！')).toBeVisible();
-  await expect(page.getByText('AI生成結果は確認前の表現です。')).toBeVisible();
-  await page.getByRole('button', { name: '保存する' }).click();
+  await page.getByTestId('compose-input').fill(photoInput);
+  const responsePromise = waitForMaybeGenerationResponse(page);
+  await page.getByTestId('compose-generate-button').click();
+
+  await expect(page.getByTestId('compose-result-source')).toContainText(photoInput, {
+    timeout: generationWaitMs,
+  });
+  const resultText = await readGeneratedTaiwanText(page.getByTestId('compose-result-text'));
+  expect(resultText).toMatch(photoIntentPattern);
+  await expect(page.getByTestId('compose-result-pinyin')).not.toHaveText('', { timeout: generationWaitMs });
+  await expect(page.getByTestId('needs-native-check-note')).toContainText('確認前');
+  await expectNativeCheckFromApiIfAvailable(await responsePromise);
+
+  await page.getByTestId('compose-save-button').click();
   await expect(page.getByText('保存しました')).toBeVisible();
+
+  return { resultText };
 }
 
 test.beforeEach(async ({ page }) => {
@@ -297,31 +362,38 @@ test('Flow A: 使う画面から大きく表示して戻れる', async ({ page }
 });
 
 test('Flow B: 作るから保存して保存画面で検索できる', async ({ page }) => {
-  await createAndSavePhotoPhrase(page);
+  const phrase = await createAndSavePhotoPhrase(page);
   await page.getByRole('button', { name: '聞く' }).first().click();
   await page.getByRole('button', { name: 'ゆっくり' }).first().click();
   await expectPageChromeHealthy(page);
 
   await page.goto('/saved');
-  await expect(page.getByText('我們一起拍照吧！')).toBeVisible();
+  const savedCard = page.getByTestId('saved-phrase-card').first();
+  await expect(savedCard.getByTestId('saved-phrase-source')).toContainText(photoInput);
+  await expect(savedCard.getByTestId('saved-phrase-result')).toContainText(phrase.resultText);
   await page.getByPlaceholder('保存フレーズを検索').fill('写真');
-  await expect(page.getByText('我們一起拍照吧！')).toBeVisible();
+  await expect(savedCard.getByTestId('saved-phrase-source')).toContainText(photoInput);
+  await expect(savedCard.getByTestId('saved-phrase-result')).toContainText(phrase.resultText);
   await expectPageChromeHealthy(page);
 });
 
 test('Flow C: 保存フレーズを大きく表示して練習へ進める', async ({ page }) => {
-  await createAndSavePhotoPhrase(page);
+  const phrase = await createAndSavePhotoPhrase(page);
 
   await page.goto('/saved');
-  await page.getByRole('button', { name: '大きく表示' }).first().click();
+  const savedCard = page.getByTestId('saved-phrase-card').first();
+  await expect(savedCard.getByTestId('saved-phrase-source')).toContainText(photoInput);
+  await savedCard.getByTestId('phrase-display-button').click();
   await expect(page).toHaveURL(/\/display\/phrase-/);
-  await expect(page.getByText('我們一起拍照吧！')).toBeVisible();
+  await expect(page.getByTestId('display-result-text')).toContainText(phrase.resultText);
   await expectBottomNavHidden(page);
 
-  await page.getByRole('button', { name: '練習' }).click();
+  await page.getByTestId('display-practice-button').click();
   await expect(page).toHaveURL(/\/practice\?phrase=phrase-/);
   await expect(page.getByText('今日のフレーズ')).toBeVisible();
-  await expect(page.getByRole('heading', { name: '我們一起拍照吧！' })).toBeVisible();
+  await expect
+    .poll(async () => normalizeText(await page.getByTestId('practice-phrase-text').innerText()))
+    .toContain(normalizeText(phrase.resultText));
   await expectPageChromeHealthy(page);
 });
 
@@ -352,15 +424,23 @@ test('Flow E: メッセージ意味確認から返信保存と大きく表示へ
   await page.getByRole('button', { name: '意味を確認' }).click();
   await expect(page.getByText('だいたいの意味')).toBeVisible();
 
+  const responsePromise = waitForMaybeGenerationResponse(page);
   await page.getByRole('button', { name: 'また会いたい' }).click();
-  await expect(page.getByText('我還想再見你！')).toBeVisible();
-  await expect(page.getByText('AI生成結果は確認前の表現です。')).toBeVisible();
-  await page.getByRole('button', { name: '保存' }).first().click();
+  await expectNativeCheckFromApiIfAvailable(await responsePromise);
+
+  const replyLocator = page.getByTestId('messages-reply-text');
+  await expect
+    .poll(async () => normalizeText(await replyLocator.innerText()), { timeout: generationWaitMs })
+    .toMatch(replyIntentPattern);
+  const replyText = await readGeneratedTaiwanText(replyLocator);
+  expect(replyText).toMatch(replyIntentPattern);
+  await expect(page.getByTestId('needs-native-check-note')).toContainText('確認前');
+  await page.getByTestId('messages-save-button').click();
   await expect(page.getByText('返信候補を保存しました')).toBeVisible();
 
-  await page.getByRole('button', { name: '大きく表示' }).click();
+  await page.getByTestId('messages-display-button').click();
   await expect(page).toHaveURL(/\/display\/draft-/);
-  await expect(page.getByText('我還想再見你！')).toBeVisible();
+  await expect(page.getByTestId('display-result-text')).toContainText(replyText);
   await expectBottomNavHidden(page);
   await expectNoHorizontalOverflow(page);
 });

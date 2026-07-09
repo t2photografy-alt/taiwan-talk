@@ -5,7 +5,7 @@ const useExternalServer = Boolean(process.env.BASE_URL);
 
 export default defineConfig({
   testDir: './tests/e2e',
-  timeout: 30_000,
+  timeout: 90_000,
   workers: 1,
   expect: {
     timeout: 7_000,

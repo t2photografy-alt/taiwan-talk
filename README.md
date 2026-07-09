@@ -56,6 +56,13 @@ Taiwan Talk is a Taiwan Mandarin and Japanese conversation support app for quick
 - Generated phrases are still marked as `needsNativeCheck` / `needs-native-check`
 - Production deploy completed and `BASE_URL=https://taiwan-talk.vercel.app npm run qa:flow` passed with 8 tests
 
+## Phase 3B Status
+
+- Flow QA now supports variable AI generation results instead of fixed mock wording
+- `npm run qa:flow` checks structure, save/display/practice flows, and review notices
+- AI generation results remain `needsNativeCheck` / `needs-native-check`
+- If the API is disabled, missing, or returns an off-intent result, the app falls back to mock generation
+
 ## Tech Stack
 
 - React
@@ -86,6 +93,8 @@ npm run build
 npm run qa:flow
 npm run qa:screenshots
 ```
+
+`qa:flow` does not require generated phrases to match one fixed sentence. It checks the generated result card, Taiwan Mandarin-like text, save/display/practice routes, and the native-check notice so the same flow works with mock fallback and AI-enabled Production.
 
 To run the flow QA against a deployed URL:
 
@@ -140,10 +149,9 @@ AI_GENERATION_ENABLED=true
 
 The app intentionally keeps these areas mocked or pending final verification:
 
-- AI generation: still mocked
+- AI generation: OpenAI API foundation is available, but generated wording is still under review and falls back to mock when disabled or off-intent
 - Pronunciation analysis: still mocked
 - Taiwan Mandarin wording: marked with `needsNativeCheck`
-- AI generation: Vercel API foundation exists, but quality is still under review and falls back to mock when disabled
 - Audio playback: implemented with browser `speechSynthesis`
 - Recording: implemented as a browser `MediaRecorder` foundation
 - Android/PWA support: browser and device dependent

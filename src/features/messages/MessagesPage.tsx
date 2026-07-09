@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Clipboard, Maximize2, MessageCircle, Send, Sparkles } from 'lucide-react';
 import { Chip } from '../../components/Chip';
 import { Header } from '../../components/Header';
@@ -39,6 +39,7 @@ export function MessagesPage({
   const [reply, setReply] = useState<ConversationResult | null>(null);
   const [notice, setNotice] = useState('');
   const { t } = useDisplayLanguage();
+  const replyRequestIdRef = useRef(0);
 
   async function analyze() {
     const nextAnalysis = await conversationService.analyzeMessage(incomingText);
@@ -47,13 +48,20 @@ export function MessagesPage({
   }
 
   async function createReply(nextIntent = intent) {
+    const requestId = replyRequestIdRef.current + 1;
+    replyRequestIdRef.current = requestId;
+    const requestedText = incomingText;
+
     const nextReply = await conversationService.createReply({
-      incomingText,
+      incomingText: requestedText,
       intent: nextIntent,
       tone: 'dm',
     });
-    setReply(nextReply);
-    setNotice('');
+
+    if (requestId === replyRequestIdRef.current) {
+      setReply(nextReply);
+      setNotice('');
+    }
   }
 
   useEffect(() => {
@@ -85,6 +93,7 @@ export function MessagesPage({
         <div className="glass-card rounded-[18px] p-3">
           <textarea
             className="min-h-24 w-full resize-none bg-transparent text-[17px] font-bold leading-relaxed text-[#141821] outline-none"
+            data-testid="messages-input"
             id="message-source"
             value={incomingText}
             onChange={(event) => setIncomingText(event.target.value)}
@@ -92,6 +101,7 @@ export function MessagesPage({
         </div>
         <PrimaryButton
           className="mt-3"
+          data-testid="messages-check-button"
           fullWidth
           icon={<Sparkles aria-hidden="true" size={18} />}
           onClick={() => {
@@ -139,22 +149,31 @@ export function MessagesPage({
       </section>
 
       {reply ? (
-        <section className="phrase-hero rounded-[22px] p-4">
+        <section className="phrase-hero rounded-[22px] p-4" data-testid="messages-reply-card">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-black text-[#141821]">返信候補</h2>
             <span className="rounded-full bg-[var(--brand-red)] px-3 py-1 text-xs font-black text-white">
               DM向け
             </span>
           </div>
-          <p className="whitespace-pre-line text-[26px] font-black leading-tight tracking-normal text-[var(--brand-red)]">
+          <p
+            className="whitespace-pre-line text-[26px] font-black leading-tight tracking-normal text-[var(--brand-red)]"
+            data-testid="messages-reply-text"
+          >
             {reply.resultText}
           </p>
           {reply.pinyin ? (
-            <p className="mt-2 whitespace-pre-line text-sm font-semibold leading-relaxed text-[#344054]">
+            <p
+              className="mt-2 whitespace-pre-line text-sm font-semibold leading-relaxed text-[#344054]"
+              data-testid="messages-reply-pinyin"
+            >
               {reply.pinyin}
             </p>
           ) : null}
-          <p className="mt-3 rounded-[14px] bg-white/72 p-3 text-sm font-bold leading-relaxed text-[#344054]">
+          <p
+            className="mt-3 rounded-[14px] bg-white/72 p-3 text-sm font-bold leading-relaxed text-[#344054]"
+            data-testid="messages-reply-source"
+          >
             {reply.sourceText}
           </p>
           <div className="mt-4 grid grid-cols-2 gap-2">
@@ -165,10 +184,15 @@ export function MessagesPage({
             >
               コピー
             </PrimaryButton>
-            <PrimaryButton icon={<Send aria-hidden="true" size={18} />} onClick={saveReply}>
+            <PrimaryButton
+              data-testid="messages-save-button"
+              icon={<Send aria-hidden="true" size={18} />}
+              onClick={saveReply}
+            >
               {t('cta.save')}
             </PrimaryButton>
             <PrimaryButton
+              data-testid="messages-display-button"
               icon={<Maximize2 aria-hidden="true" size={18} />}
               variant="blue"
               fullWidth
@@ -178,8 +202,11 @@ export function MessagesPage({
               {t('cta.largeDisplay')}
             </PrimaryButton>
           </div>
-          <p className="mt-3 rounded-[12px] bg-white/70 px-3 py-2 text-xs font-bold leading-relaxed text-[#667085]">
-            AI生成結果は確認前の表現です。必要に応じて相手や場面に合わせて調整してください。
+          <p
+            className="mt-3 rounded-[12px] bg-white/70 px-3 py-2 text-xs font-bold leading-relaxed text-[#667085]"
+            data-testid="needs-native-check-note"
+          >
+            {t('ai.needsNativeCheckNote')}
           </p>
           {notice ? <p className="mt-2 text-center text-sm font-black text-[var(--brand-red)]">{notice}</p> : null}
         </section>

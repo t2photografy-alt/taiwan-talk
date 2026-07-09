@@ -104,13 +104,16 @@ export function SavedPage({
       ) : (
         <section className="space-y-3">
           {filteredPhrases.map((phrase) => (
-            <article key={phrase.id} className="glass-card rounded-[20px] p-4">
+            <article key={phrase.id} className="glass-card rounded-[20px] p-4" data-testid="saved-phrase-card">
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <span className="rounded-full bg-[#eef6ff] px-3 py-1 text-xs font-black text-[var(--brand-blue)]">
                     {categoryLabels[phrase.category]}
                   </span>
-                  <h2 className="mt-3 whitespace-pre-line text-[22px] font-black leading-tight tracking-normal text-[var(--brand-red)]">
+                  <h2
+                    className="mt-3 whitespace-pre-line text-[22px] font-black leading-tight tracking-normal text-[var(--brand-red)]"
+                    data-testid="saved-phrase-result"
+                  >
                     {phrase.resultText}
                   </h2>
                   {phrase.pinyin ? (
@@ -118,7 +121,9 @@ export function SavedPage({
                       {phrase.pinyin}
                     </p>
                   ) : null}
-                  <p className="mt-2 text-sm font-bold text-[#667085]">{phrase.sourceText}</p>
+                  <p className="mt-2 text-sm font-bold text-[#667085]" data-testid="saved-phrase-source">
+                    {phrase.sourceText}
+                  </p>
                 </div>
                 <button
                   aria-label={phrase.isFavorite ? 'お気に入り解除' : 'お気に入り'}
@@ -138,6 +143,7 @@ export function SavedPage({
                   コピー
                 </PrimaryButton>
                 <PrimaryButton
+                  data-testid="phrase-display-button"
                   icon={<Maximize2 aria-hidden="true" size={18} />}
                   variant="soft"
                   onClick={() => onDisplay(phrase)}
@@ -145,6 +151,7 @@ export function SavedPage({
                   {t('cta.largeDisplay')}
                 </PrimaryButton>
                 <PrimaryButton
+                  data-testid="phrase-practice-button"
                   icon={<Mic2 aria-hidden="true" size={18} />}
                   variant="blue"
                   onClick={() => onPractice(phrase)}

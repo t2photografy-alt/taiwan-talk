@@ -235,7 +235,10 @@ export function PracticePage({
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
             <p className="text-xs font-black text-[#667085]">今日のフレーズ</p>
-            <h2 className="mt-1 text-[17px] font-black leading-relaxed text-[#141821]">
+            <h2
+              className="mt-1 text-[17px] font-black leading-relaxed text-[#141821]"
+              data-testid="practice-phrase-text"
+            >
               {selectedPhrase.resultText.replace('\n', ' ')}
             </h2>
           </div>

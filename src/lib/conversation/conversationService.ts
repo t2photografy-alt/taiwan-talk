@@ -14,6 +14,10 @@ import type {
   Phrase,
 } from './types';
 
+const photoIntentPattern = /写真|撮|撮らせ|拍|照/;
+const photoResultPattern = /拍|照|照片|相片/;
+const seeAgainReplyPattern = /下次|再|見|一起|玩/;
+
 export type ConversationService = {
   generate(request: ConversationRequest): Promise<ConversationResult>;
   analyzeMessage(text: string): ReturnType<ConversationProvider['analyzeMessage']>;
@@ -79,6 +83,42 @@ function isApiResponse(value: unknown): value is GenerateConversationResponse {
   );
 }
 
+function isApiResultUsable(
+  request: GenerateConversationRequest,
+  result: GeneratedConversationResult,
+) {
+  if (
+    !result.resultText.trim() ||
+    result.targetLanguage !== request.targetLanguage ||
+    result.needsNativeCheck !== true ||
+    result.reviewStatus !== 'needs-native-check'
+  ) {
+    return false;
+  }
+
+  if (request.targetLanguage === 'zh-TW' && !result.pinyin?.trim()) {
+    return false;
+  }
+
+  if (
+    request.targetLanguage === 'zh-TW' &&
+    photoIntentPattern.test(request.sourceText) &&
+    !photoResultPattern.test(result.resultText)
+  ) {
+    return false;
+  }
+
+  if (
+    request.mode === 'message-reply' &&
+    (request.replyIntent === 'seeAgain' || request.replyIntent === 'また会いたい') &&
+    !seeAgainReplyPattern.test(result.resultText)
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
 async function requestApiGeneration(request: GenerateConversationRequest): Promise<GeneratedConversationResult> {
   const response = await fetch('/api/conversation/generate', {
     method: 'POST',
@@ -91,6 +131,10 @@ async function requestApiGeneration(request: GenerateConversationRequest): Promi
   const payload = (await response.json().catch(() => null)) as unknown;
 
   if (response.ok && isApiResponse(payload)) {
+    if (!isApiResultUsable(request, payload.result)) {
+      throw new Error('AI generation result did not match the requested intent');
+    }
+
     return withNativeCheck(payload.result);
   }
 

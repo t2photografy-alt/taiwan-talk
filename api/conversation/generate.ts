@@ -49,6 +49,9 @@ const categories: PhraseCategory[] = [
   'other',
 ];
 const languages: LanguageCode[] = ['ja', 'zh-TW'];
+const DEFAULT_NATURALNESS_NOTE = 'AI生成結果のため、台湾華語表現はネイティブ確認前です。';
+const photoIntentPattern = /写真|撮|撮らせ|拍|照/;
+const photoResultPattern = /拍|照|照片|相片/;
 
 const generationSchema = {
   type: 'object',
@@ -169,16 +172,51 @@ function validateRequest(body: unknown): GenerateConversationRequest | null {
   };
 }
 
+function buildModeInstructions(request: GenerateConversationRequest) {
+  if (request.mode === 'compose') {
+    return [
+      'mode: compose の目的: ユーザーが入力した日本語または台湾華語の意図を、相手に自然に伝わる表現へ整える。',
+      'sourceText の会話目的を最優先し、勝手に挨拶、感想、別れの言葉、再会表現へ変えない。',
+      'sourceText に「写真」「撮る」「撮らせて」が含まれる場合は、撮影・写真・撮影許可の表現にする。',
+      'sourceText に「また会いたい」が含まれる場合は、再会希望の表現にする。',
+      'sourceText に「ありがとう」が含まれる場合は、感謝表現にする。',
+      'sourceText に「すごい」「かっこいい」「パフォーマンス」が含まれる場合は、褒め言葉にする。',
+    ].join('\n');
+  }
+
+  if (request.mode === 'message-reply') {
+    return [
+      'mode: message-reply の目的: 相手のメッセージの意味を踏まえ、replyIntent に合った返信候補を作る。',
+      'sourceText と replyIntent の両方を必ず反映する。',
+      'replyIntent が「また会いたい」または seeAgain なら、次も会いたい/また一緒に何かしたい表現にする。',
+      'replyIntent が「ありがとう」または thanks なら、感謝を返す。',
+      'replyIntent が「うれしい」または happy なら、喜びを返す。',
+      '相手の文にない話題を勝手に追加しない。',
+    ].join('\n');
+  }
+
+  return [
+    'mode: quick の目的: 短いフレーズをすぐ見せやすく整える。',
+    'なるべく短く、スマホ画面で見せやすく、sourceText の意図を変えない。',
+  ].join('\n');
+}
+
 function buildPrompt(request: GenerateConversationRequest) {
   return [
     'あなたは台湾華語と日本語の会話サポートアプリ Taiwan Talk の生成エンジンです。',
     '目的は、翻訳の正確性だけではなく、友達・イベント・DMでスマホ画面を見せやすい自然な言い方を作ることです。',
+    'sourceText の主な意図を必ず維持してください。',
+    'sourceText に含まれない別の話題へ飛ばないでください。',
+    'resultText と alternatives は、sourceText と同じ会話目的の範囲だけで作ってください。',
+    '再会挨拶でない入力に、好久不見などの再会表現を返さないでください。',
+    '入力意図が曖昧な場合は、勝手に別シーンへ寄せず、短く自然な確認・返答にしてください。',
     '台湾華語は必ず繁体字で出し、中国大陸向け簡体字にしないでください。',
     '日本語直訳っぽさを減らし、カジュアルすぎて失礼にならない表現にしてください。',
     '政治的表現、国旗、国家論争には寄せないでください。',
-    'pinyinは声調記号付きで出してください。日本語出力の場合はpinyinをnullにしてください。',
+    'pinyinは必ずresultTextと対応させ、声調記号付きで出してください。日本語出力の場合はpinyinをnullにしてください。',
     '生成結果は短く、スマホ画面で読みやすくしてください。代替案は最大2件です。',
     "needsNativeCheckは必ずtrue、reviewStatusは必ず'needs-native-check'です。ネイティブ確認済みとは書かないでください。",
+    buildModeInstructions(request),
     `入力JSON: ${JSON.stringify(request)}`,
   ].join('\n');
 }
@@ -216,18 +254,18 @@ function extractOutputText(response: unknown) {
 function normalizeResult(result: ModelConversationResult, request: GenerateConversationRequest): GeneratedConversationResult {
   return {
     sourceText: result.sourceText || request.sourceText,
-    resultText: result.resultText,
-    pinyin: result.pinyin ?? undefined,
+    resultText: result.resultText.trim(),
+    pinyin: result.pinyin?.trim() || undefined,
     sourceLanguage: isLanguage(result.sourceLanguage) ? result.sourceLanguage : request.sourceLanguage,
     targetLanguage: isLanguage(result.targetLanguage) ? result.targetLanguage : request.targetLanguage,
     tone: isTone(result.tone) ? result.tone : request.tone,
     category: isCategory(result.category) ? result.category : request.category ?? 'other',
-    nuance: result.nuance ?? undefined,
+    nuance: result.nuance?.trim() || undefined,
     alternatives: result.alternatives.slice(0, 2).map((item) => ({
-      label: item.label,
-      resultText: item.resultText,
-      pinyin: item.pinyin ?? undefined,
-      note: item.note ?? undefined,
+      label: item.label.trim(),
+      resultText: item.resultText.trim(),
+      pinyin: item.pinyin?.trim() || undefined,
+      note: item.note?.trim() || undefined,
     })),
     readabilityScore:
       typeof result.readabilityScore === 'number'
@@ -236,8 +274,64 @@ function normalizeResult(result: ModelConversationResult, request: GenerateConve
     needsNativeCheck: true,
     reviewStatus: 'needs-native-check',
     naturalnessNote:
-      result.naturalnessNote ?? 'AI生成結果のため、台湾華語表現はネイティブ確認前です。',
+      result.naturalnessNote?.trim() || DEFAULT_NATURALNESS_NOTE,
   };
+}
+
+function appendNaturalnessNote(note: string | undefined, addition: string) {
+  if (!note) {
+    return addition;
+  }
+
+  return note.includes(addition) ? note : `${note} ${addition}`;
+}
+
+function applyIntentNotes(
+  result: GeneratedConversationResult,
+  request: GenerateConversationRequest,
+): GeneratedConversationResult {
+  if (
+    request.targetLanguage === 'zh-TW' &&
+    photoIntentPattern.test(request.sourceText) &&
+    !photoResultPattern.test(result.resultText)
+  ) {
+    return {
+      ...result,
+      naturalnessNote: appendNaturalnessNote(
+        result.naturalnessNote,
+        '入力意図との一致は要確認です。写真・撮影依頼として自然か確認してください。',
+      ),
+    };
+  }
+
+  return result;
+}
+
+function validateGeneratedResult(
+  result: GeneratedConversationResult,
+  request: GenerateConversationRequest,
+): string | null {
+  if (!result.resultText.trim()) {
+    return 'resultText is empty';
+  }
+
+  if (result.targetLanguage !== request.targetLanguage) {
+    return 'targetLanguage mismatch';
+  }
+
+  if (result.needsNativeCheck !== true || result.reviewStatus !== 'needs-native-check') {
+    return 'review status mismatch';
+  }
+
+  if (request.targetLanguage === 'zh-TW' && !result.pinyin?.trim()) {
+    return 'pinyin is missing';
+  }
+
+  if (!isCategory(result.category) || !isTone(result.tone)) {
+    return 'category or tone is invalid';
+  }
+
+  return null;
 }
 
 function classifyOpenAiError(error: unknown): GenerateConversationErrorCode {
@@ -311,7 +405,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }
 
     const parsed = JSON.parse(outputText) as ModelConversationResult;
-    const result = normalizeResult(parsed, request);
+    const result = applyIntentNotes(normalizeResult(parsed, request), request);
+    const invalidReason = validateGeneratedResult(result, request);
+
+    if (invalidReason) {
+      res.status(502).json(errorResponse('parse-error', `AI生成結果の検証に失敗しました: ${invalidReason}`));
+      return;
+    }
 
     res.status(200).json({
       ok: true,

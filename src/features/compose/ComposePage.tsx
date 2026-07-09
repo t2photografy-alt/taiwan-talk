@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Bookmark, Lightbulb, Mic2, Play, Sparkles, Volume2 } from 'lucide-react';
 import { Chip } from '../../components/Chip';
 import { Header } from '../../components/Header';
@@ -38,6 +38,7 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
   const [savedNotice, setSavedNotice] = useState('');
   const { t } = useDisplayLanguage();
   const speechPlayback = useSpeechPlayback();
+  const generationIdRef = useRef(0);
 
   const resultWithCategory = useMemo(
     () => (result ? { ...result, category } : null),
@@ -45,16 +46,31 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
   );
 
   async function generate() {
+    const generationId = generationIdRef.current + 1;
+    generationIdRef.current = generationId;
+    const requestedSourceText = sourceText;
+    const requestedDirection = direction;
+    const requestedCategory = category;
+
     setIsLoading(true);
     setSavedNotice('');
-    const nextResult = await conversationService.generate({
-      sourceText,
-      direction,
-      tone: direction === 'ja-to-zh-TW' ? 'friendly' : 'dm',
-      category,
-    });
-    setResult(nextResult);
-    setIsLoading(false);
+
+    try {
+      const nextResult = await conversationService.generate({
+        sourceText: requestedSourceText,
+        direction: requestedDirection,
+        tone: requestedDirection === 'ja-to-zh-TW' ? 'friendly' : 'dm',
+        category: requestedCategory,
+      });
+
+      if (generationId === generationIdRef.current) {
+        setResult(nextResult);
+      }
+    } finally {
+      if (generationId === generationIdRef.current) {
+        setIsLoading(false);
+      }
+    }
   }
 
   useEffect(() => {
@@ -114,6 +130,7 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
         <div className="glass-card rounded-[18px] p-3">
           <textarea
             className="min-h-20 w-full resize-none bg-transparent text-[18px] font-bold leading-relaxed text-[#141821] outline-none placeholder:text-[#98a2b3]"
+            data-testid="compose-input"
             id="compose-source"
             maxLength={200}
             value={sourceText}
@@ -128,6 +145,7 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
 
       <PrimaryButton
         className="mb-4"
+        data-testid="compose-generate-button"
         fullWidth
         icon={<Sparkles aria-hidden="true" size={18} />}
         onClick={generate}
@@ -136,7 +154,7 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
       </PrimaryButton>
 
       {resultWithCategory ? (
-        <section className="phrase-hero mb-4 rounded-[22px] p-4">
+        <section className="phrase-hero mb-4 rounded-[22px] p-4" data-testid="compose-result-card">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-black text-[#141821]">
               {direction === 'ja-to-zh-TW' ? '友達トーンの台湾華語' : '自然な日本語'}
@@ -145,15 +163,24 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
               おすすめ
             </span>
           </div>
-          <p className="whitespace-pre-line text-[28px] font-black leading-tight tracking-normal text-[var(--brand-red)]">
+          <p
+            className="whitespace-pre-line text-[28px] font-black leading-tight tracking-normal text-[var(--brand-red)]"
+            data-testid="compose-result-text"
+          >
             {resultWithCategory.resultText}
           </p>
           {resultWithCategory.pinyin ? (
-            <p className="mt-2 whitespace-pre-line text-sm font-semibold leading-relaxed text-[#344054]">
+            <p
+              className="mt-2 whitespace-pre-line text-sm font-semibold leading-relaxed text-[#344054]"
+              data-testid="compose-result-pinyin"
+            >
               {resultWithCategory.pinyin}
             </p>
           ) : null}
-          <p className="mt-3 rounded-[14px] bg-white/72 p-3 text-sm font-bold leading-relaxed text-[#344054]">
+          <p
+            className="mt-3 rounded-[14px] bg-white/72 p-3 text-sm font-bold leading-relaxed text-[#344054]"
+            data-testid="compose-result-source"
+          >
             {resultWithCategory.sourceText}
           </p>
           <div className="mt-4 grid grid-cols-2 gap-2">
@@ -207,18 +234,27 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
               {speechPlayback.error}
             </p>
           ) : null}
-          <p className="mt-3 rounded-[12px] bg-white/70 px-3 py-2 text-xs font-bold leading-relaxed text-[#667085]">
-            AI生成結果は確認前の表現です。必要に応じて相手や場面に合わせて調整してください。
+          <p
+            className="mt-3 rounded-[12px] bg-white/70 px-3 py-2 text-xs font-bold leading-relaxed text-[#667085]"
+            data-testid="needs-native-check-note"
+          >
+            {t('ai.needsNativeCheckNote')}
           </p>
           <div className="mt-3 grid grid-cols-2 gap-2">
             <PrimaryButton
+              data-testid="compose-save-button"
               fullWidth
               icon={<Bookmark aria-hidden="true" size={18} />}
               onClick={saveResult}
             >
               {t('cta.savePhrase')}
             </PrimaryButton>
-            <PrimaryButton fullWidth variant="blue" onClick={() => onDisplayResult(resultWithCategory)}>
+            <PrimaryButton
+              data-testid="compose-display-button"
+              fullWidth
+              variant="blue"
+              onClick={() => onDisplayResult(resultWithCategory)}
+            >
               {t('cta.largeDisplay')}
             </PrimaryButton>
           </div>
