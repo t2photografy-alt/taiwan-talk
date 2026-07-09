@@ -11,6 +11,7 @@ import { SavedPage } from '../features/saved/SavedPage';
 import { SettingsPage } from '../features/settings/SettingsPage';
 import { conversationService } from '../lib/conversation/conversationService';
 import type { ConversationResult, Phrase } from '../lib/conversation/types';
+import { DisplayLanguageProvider } from '../lib/displayLanguage/DisplayLanguageProvider';
 import { localPhraseRepository } from '../lib/storage/localPhraseRepository';
 import { nowIso } from '../lib/utils/date';
 import { createId } from '../lib/utils/id';
@@ -274,18 +275,20 @@ export default function App() {
   })();
 
   return (
-    <AppShell activePath={route.path} hideNav={route.path === '/display'} onNavigate={navigate}>
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={`${route.path}-${route.displayId ?? ''}-${route.practicePhraseId ?? ''}`}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          initial={{ opacity: 0, y: 10 }}
-          transition={{ duration: 0.18, ease: 'easeOut' }}
-        >
-          {page}
-        </motion.div>
-      </AnimatePresence>
-    </AppShell>
+    <DisplayLanguageProvider>
+      <AppShell activePath={route.path} hideNav={route.path === '/display'} onNavigate={navigate}>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={`${route.path}-${route.displayId ?? ''}-${route.practicePhraseId ?? ''}`}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            initial={{ opacity: 0, y: 10 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+          >
+            {page}
+          </motion.div>
+        </AnimatePresence>
+      </AppShell>
+    </DisplayLanguageProvider>
   );
 }

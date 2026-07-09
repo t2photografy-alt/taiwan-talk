@@ -39,6 +39,14 @@ Taiwan Talk is a Taiwan Mandarin and Japanese conversation support app for quick
 - Audio and recording behavior still depends on the browser and device
 - Pronunciation analysis is still mocked
 
+## Phase 2E Status
+
+- Slow playback now uses a clearer slower rate than normal playback
+- Playback buttons can be tapped again to stop the current speech
+- Display language switching was added for key UI labels: Japanese / Taiwan Mandarin
+- Voice type settings were added: auto / female-leaning / male-leaning
+- Voice selection depends on the device's Web Speech API voices
+
 ## Tech Stack
 
 - React
@@ -115,3 +123,5 @@ The app intentionally keeps these areas mocked or pending final verification:
 - Audio playback: implemented with browser `speechSynthesis`
 - Recording: implemented as a browser `MediaRecorder` foundation
 - Android/PWA support: browser and device dependent
+- Display language wording: Taiwan Mandarin UI wording still needs native review
+- Voice type selection: heuristic and device voice dependent

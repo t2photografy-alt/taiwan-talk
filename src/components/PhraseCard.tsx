@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Bookmark,
   BookmarkCheck,
@@ -10,8 +9,8 @@ import {
   Volume2,
 } from 'lucide-react';
 import type { Phrase } from '../lib/conversation/types';
-import { speechService } from '../lib/speech/speechService';
-import type { SpeechPlaybackSpeed } from '../lib/speech/types';
+import { useDisplayLanguage } from '../lib/displayLanguage/DisplayLanguageProvider';
+import { useSpeechPlayback } from '../lib/speech/useSpeechPlayback';
 import { PrimaryButton } from './PrimaryButton';
 
 type PhraseCardProps = {
@@ -35,29 +34,10 @@ export function PhraseCard({
   onSave,
   onFavorite,
 }: PhraseCardProps) {
-  const [playingSpeed, setPlayingSpeed] = useState<SpeechPlaybackSpeed | null>(null);
-  const [speechNotice, setSpeechNotice] = useState('');
-
-  function playPhrase(speed: SpeechPlaybackSpeed) {
-    setSpeechNotice('');
-
-    const playback = speechService.speak(phrase.resultText, {
-      speed,
-      callbacks: {
-        onStart: () => setPlayingSpeed(speed),
-        onEnd: () => setPlayingSpeed(null),
-        onError: (message) => {
-          setPlayingSpeed(null);
-          setSpeechNotice(message);
-        },
-      },
-    });
-
-    if (!playback.ok) {
-      setPlayingSpeed(null);
-      setSpeechNotice(playback.message);
-    }
-  }
+  const { t } = useDisplayLanguage();
+  const speechPlayback = useSpeechPlayback();
+  const isNormalPlaying = speechPlayback.isPlaying(phrase.id, 'normal');
+  const isSlowPlaying = speechPlayback.isPlaying(phrase.id, 'slow');
 
   if (compact) {
     return (
@@ -123,35 +103,35 @@ export function PhraseCard({
         <PrimaryButton
           icon={<Volume2 aria-hidden="true" size={18} />}
           variant="danger"
-          onClick={() => playPhrase('normal')}
+          onClick={() => speechPlayback.toggle({ phraseId: phrase.id, text: phrase.resultText, speed: 'normal' })}
         >
-          {playingSpeed === 'normal' ? '再生中' : '聞く'}
+          {isNormalPlaying ? t('cta.stop') : t('cta.listen')}
         </PrimaryButton>
         <PrimaryButton
           icon={<Clock3 aria-hidden="true" size={18} />}
           variant="soft"
-          onClick={() => playPhrase('slow')}
+          onClick={() => speechPlayback.toggle({ phraseId: phrase.id, text: phrase.resultText, speed: 'slow' })}
         >
-          {playingSpeed === 'slow' ? 'ゆっくり再生中' : 'ゆっくり'}
+          {isSlowPlaying ? t('cta.stop') : t('cta.slow')}
         </PrimaryButton>
         <PrimaryButton
           icon={<Maximize2 aria-hidden="true" size={18} />}
           variant="soft"
           onClick={() => onDisplay?.(phrase)}
         >
-          大きく表示
+          {t('cta.largeDisplay')}
         </PrimaryButton>
         <PrimaryButton
           icon={<Mic2 aria-hidden="true" size={18} />}
           variant="soft"
           onClick={() => onPractice?.(phrase)}
         >
-          練習する
+          {t('cta.practice')}
         </PrimaryButton>
       </div>
-      {speechNotice ? (
+      {speechPlayback.error ? (
         <p className="mt-2 rounded-[12px] bg-white/75 px-3 py-2 text-xs font-bold leading-relaxed text-[#b42318]">
-          {speechNotice}
+          {speechPlayback.error}
         </p>
       ) : null}
       {onSave ? (
@@ -167,7 +147,7 @@ export function PhraseCard({
           }
           onClick={() => onSave(phrase)}
         >
-          {saved ? '保存済み' : '保存する'}
+          {saved ? t('cta.saved') : t('cta.savePhrase')}
         </PrimaryButton>
       ) : null}
     </article>

@@ -9,6 +9,7 @@ import type {
   MessageAnalysis,
   ReplyIntent,
 } from '../../lib/conversation/types';
+import { useDisplayLanguage } from '../../lib/displayLanguage/DisplayLanguageProvider';
 
 type MessagesPageProps = {
   onNavigate: (path: string) => void;
@@ -37,6 +38,7 @@ export function MessagesPage({
   const [intent, setIntent] = useState<ReplyIntent>('happy');
   const [reply, setReply] = useState<ConversationResult | null>(null);
   const [notice, setNotice] = useState('');
+  const { t } = useDisplayLanguage();
 
   async function analyze() {
     const nextAnalysis = await conversationService.analyzeMessage(incomingText);
@@ -71,8 +73,8 @@ export function MessagesPage({
   return (
     <div>
       <Header
-        title="メッセージ"
-        subtitle="届いた文の意味を確認して、返事を作る"
+        title={t('page.messages.title')}
+        subtitle={t('page.messages.subtitle')}
         onMenu={() => onNavigate('/settings')}
       />
 
@@ -164,7 +166,7 @@ export function MessagesPage({
               コピー
             </PrimaryButton>
             <PrimaryButton icon={<Send aria-hidden="true" size={18} />} onClick={saveReply}>
-              保存
+              {t('cta.save')}
             </PrimaryButton>
             <PrimaryButton
               icon={<Maximize2 aria-hidden="true" size={18} />}
@@ -173,7 +175,7 @@ export function MessagesPage({
               className="col-span-2"
               onClick={() => onDisplayResult(reply)}
             >
-              大きく表示
+              {t('cta.largeDisplay')}
             </PrimaryButton>
           </div>
           {notice ? <p className="mt-2 text-center text-sm font-black text-[var(--brand-red)]">{notice}</p> : null}

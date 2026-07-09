@@ -14,11 +14,11 @@ import { Header } from '../../components/Header';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { presetPhrases } from '../../data/presets';
 import type { Phrase, PracticeResult } from '../../lib/conversation/types';
+import { useDisplayLanguage } from '../../lib/displayLanguage/DisplayLanguageProvider';
 import { practiceService } from '../../lib/practice/practiceService';
 import { recorderService } from '../../lib/recorder/recorderService';
 import type { RecordedAudio, RecorderSession } from '../../lib/recorder/types';
-import { speechService } from '../../lib/speech/speechService';
-import type { SpeechPlaybackSpeed } from '../../lib/speech/types';
+import { useSpeechPlayback } from '../../lib/speech/useSpeechPlayback';
 
 type PracticePageProps = {
   savedPhrases: Phrase[];
@@ -83,11 +83,11 @@ export function PracticePage({
   const [recordedAudio, setRecordedAudio] = useState<RecordedAudio | null>(null);
   const [recorderNotice, setRecorderNotice] = useState('');
   const [notice, setNotice] = useState('');
-  const [playingSpeed, setPlayingSpeed] = useState<SpeechPlaybackSpeed | null>(null);
-  const [speechNotice, setSpeechNotice] = useState('');
   const recorderSessionRef = useRef<RecorderSession | null>(null);
   const recordedAudioRef = useRef<RecordedAudio | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const { t } = useDisplayLanguage();
+  const speechPlayback = useSpeechPlayback();
 
   useEffect(() => {
     recordedAudioRef.current = recordedAudio;
@@ -112,7 +112,6 @@ export function PracticePage({
     () => () => {
       recorderSessionRef.current?.cancel();
       recorderService.releaseRecording(recordedAudioRef.current);
-      speechService.stop();
     },
     [],
   );
@@ -136,31 +135,8 @@ export function PracticePage({
     setResult(null);
   }
 
-  function playSelectedPhrase(speed: SpeechPlaybackSpeed) {
-    setSpeechNotice('');
-
-    const playback = speechService.speak(selectedPhrase.resultText, {
-      speed,
-      callbacks: {
-        onStart: () => setPlayingSpeed(speed),
-        onEnd: () => setPlayingSpeed(null),
-        onError: (message) => {
-          setPlayingSpeed(null);
-          setSpeechNotice(message);
-        },
-      },
-    });
-
-    if (!playback.ok) {
-      setPlayingSpeed(null);
-      setSpeechNotice(playback.message);
-    }
-  }
-
   async function startRecording() {
-    speechService.stop();
-    setPlayingSpeed(null);
-    setSpeechNotice('');
+    speechPlayback.stop();
     setNotice('');
     setResult(null);
     setRecorderNotice('');
@@ -249,8 +225,8 @@ export function PracticePage({
   return (
     <div>
       <Header
-        title="練習"
-        subtitle="まねして話して、通じやすさをチェック"
+        title={t('page.practice.title')}
+        subtitle={t('page.practice.subtitle')}
         rightIcon={<CircleHelp aria-hidden="true" size={23} strokeWidth={2.3} />}
         onMenu={() => onNavigate('/settings')}
       />
@@ -303,21 +279,33 @@ export function PracticePage({
           <PrimaryButton
             icon={<Volume2 aria-hidden="true" size={18} />}
             variant="blue"
-            onClick={() => playSelectedPhrase('normal')}
+            onClick={() =>
+              speechPlayback.toggle({
+                phraseId: selectedPhrase.id,
+                text: selectedPhrase.resultText,
+                speed: 'normal',
+              })
+            }
           >
-            {playingSpeed === 'normal' ? '再生中' : '聞く'}
+            {speechPlayback.isPlaying(selectedPhrase.id, 'normal') ? t('cta.stop') : t('cta.listen')}
           </PrimaryButton>
           <PrimaryButton
             icon={<Clock3 aria-hidden="true" size={18} />}
             variant="soft"
-            onClick={() => playSelectedPhrase('slow')}
+            onClick={() =>
+              speechPlayback.toggle({
+                phraseId: selectedPhrase.id,
+                text: selectedPhrase.resultText,
+                speed: 'slow',
+              })
+            }
           >
-            {playingSpeed === 'slow' ? 'ゆっくり再生中' : 'ゆっくり聞く'}
+            {speechPlayback.isPlaying(selectedPhrase.id, 'slow') ? t('cta.stop') : t('cta.slowListen')}
           </PrimaryButton>
         </div>
-        {speechNotice ? (
+        {speechPlayback.error ? (
           <p className="mt-2 rounded-[12px] bg-[#fff7f7] px-3 py-2 text-xs font-bold leading-relaxed text-[#b42318]">
-            {speechNotice}
+            {speechPlayback.error}
           </p>
         ) : null}
       </section>
@@ -459,7 +447,13 @@ export function PracticePage({
             aria-label="暗記練習を再生"
             className="grid h-11 w-11 place-items-center rounded-full bg-[#eef6ff] text-[var(--brand-blue)]"
             type="button"
-            onClick={() => playSelectedPhrase('normal')}
+            onClick={() =>
+              speechPlayback.toggle({
+                phraseId: selectedPhrase.id,
+                text: selectedPhrase.resultText,
+                speed: 'normal',
+              })
+            }
           >
             <Play aria-hidden="true" fill="currentColor" size={22} />
           </button>

@@ -2,6 +2,7 @@ import { ArrowLeft, Bookmark, Check, Clipboard, Mic2 } from 'lucide-react';
 import { DarumaLogo } from '../../components/DarumaLogo';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import type { Phrase } from '../../lib/conversation/types';
+import { useDisplayLanguage } from '../../lib/displayLanguage/DisplayLanguageProvider';
 
 type DisplayPageProps = {
   phrase?: Phrase;
@@ -13,6 +14,8 @@ type DisplayPageProps = {
 };
 
 export function DisplayPage({ phrase, isSaved, onBack, onCopy, onSave, onPractice }: DisplayPageProps) {
+  const { t } = useDisplayLanguage();
+
   if (!phrase) {
     return (
       <div className="flex min-h-[72dvh] flex-col items-center justify-center text-center">
@@ -53,7 +56,7 @@ export function DisplayPage({ phrase, isSaved, onBack, onCopy, onSave, onPractic
             ].join(' ')}
           >
             {isSaved ? <Check aria-hidden="true" size={14} /> : <Bookmark aria-hidden="true" size={14} />}
-            {isSaved ? '保存済み' : 'まだ保存していません'}
+            {isSaved ? t('cta.saved') : 'まだ保存していません'}
           </span>
           <h1 className="display-kanji whitespace-pre-line font-black tracking-normal text-[#141821]">
             {phrase.resultText}
@@ -83,10 +86,10 @@ export function DisplayPage({ phrase, isSaved, onBack, onCopy, onSave, onPractic
             void onSave(phrase);
           }}
         >
-          保存
+          {t('cta.save')}
         </PrimaryButton>
         <PrimaryButton icon={<Mic2 aria-hidden="true" size={18} />} variant="blue" onClick={() => onPractice(phrase)}>
-          練習
+          {t('nav.practice')}
         </PrimaryButton>
       </footer>
     </div>

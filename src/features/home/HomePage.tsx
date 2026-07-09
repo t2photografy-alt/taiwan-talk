@@ -3,6 +3,7 @@ import { categoryLabels, presetPhrases } from '../../data/presets';
 import { Header } from '../../components/Header';
 import { PhraseCard } from '../../components/PhraseCard';
 import type { Phrase } from '../../lib/conversation/types';
+import { useDisplayLanguage } from '../../lib/displayLanguage/DisplayLanguageProvider';
 
 type HomePageProps = {
   savedPhrases: Phrase[];
@@ -22,12 +23,13 @@ export function HomePage({
   const recommended =
     savedPhrases.find((phrase) => phrase.id === presetPhrases[0].id) ?? presetPhrases[0];
   const recentPhrases = savedPhrases.length > 0 ? savedPhrases.slice(0, 4) : presetPhrases.slice(1, 5);
+  const { t } = useDisplayLanguage();
 
   return (
     <div>
       <Header
-        title="使う"
-        subtitle="登録フレーズをすぐに使う"
+        title={t('page.home.title')}
+        subtitle={t('page.home.subtitle')}
         onMenu={() => onNavigate('/settings')}
       />
 

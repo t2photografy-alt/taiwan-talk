@@ -10,8 +10,8 @@ import type {
   LanguageDirection,
   PhraseCategory,
 } from '../../lib/conversation/types';
-import { speechService } from '../../lib/speech/speechService';
-import type { SpeechPlaybackSpeed } from '../../lib/speech/types';
+import { useDisplayLanguage } from '../../lib/displayLanguage/DisplayLanguageProvider';
+import { useSpeechPlayback } from '../../lib/speech/useSpeechPlayback';
 
 type ComposePageProps = {
   onNavigate: (path: string) => void;
@@ -36,8 +36,8 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
   const [result, setResult] = useState<ConversationResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [savedNotice, setSavedNotice] = useState('');
-  const [playingSpeed, setPlayingSpeed] = useState<SpeechPlaybackSpeed | null>(null);
-  const [speechNotice, setSpeechNotice] = useState('');
+  const { t } = useDisplayLanguage();
+  const speechPlayback = useSpeechPlayback();
 
   const resultWithCategory = useMemo(
     () => (result ? { ...result, category } : null),
@@ -47,7 +47,6 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
   async function generate() {
     setIsLoading(true);
     setSavedNotice('');
-    setSpeechNotice('');
     const nextResult = await conversationService.generate({
       sourceText,
       direction,
@@ -71,36 +70,11 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
     setSavedNotice('保存しました');
   }
 
-  function playResult(speed: SpeechPlaybackSpeed) {
-    if (!resultWithCategory) {
-      return;
-    }
-
-    setSpeechNotice('');
-
-    const playback = speechService.speak(resultWithCategory.resultText, {
-      speed,
-      callbacks: {
-        onStart: () => setPlayingSpeed(speed),
-        onEnd: () => setPlayingSpeed(null),
-        onError: (message) => {
-          setPlayingSpeed(null);
-          setSpeechNotice(message);
-        },
-      },
-    });
-
-    if (!playback.ok) {
-      setPlayingSpeed(null);
-      setSpeechNotice(playback.message);
-    }
-  }
-
   return (
     <div>
       <Header
-        title="作る"
-        subtitle="話したいことを、自然な言い方に"
+        title={t('page.compose.title')}
+        subtitle={t('page.compose.subtitle')}
         onMenu={() => onNavigate('/settings')}
       />
 
@@ -186,16 +160,38 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
             <PrimaryButton
               icon={<Volume2 aria-hidden="true" size={18} />}
               variant="danger"
-              onClick={() => playResult('normal')}
+              onClick={() => {
+                if (!resultWithCategory) {
+                  return;
+                }
+                speechPlayback.toggle({
+                  phraseId: 'compose-result',
+                  text: resultWithCategory.resultText,
+                  speed: 'normal',
+                });
+              }}
             >
-              {playingSpeed === 'normal' ? '再生中' : '聞く'}
+              {resultWithCategory && speechPlayback.isPlaying('compose-result', 'normal')
+                ? t('cta.stop')
+                : t('cta.listen')}
             </PrimaryButton>
             <PrimaryButton
               icon={<Play aria-hidden="true" size={18} />}
               variant="soft"
-              onClick={() => playResult('slow')}
+              onClick={() => {
+                if (!resultWithCategory) {
+                  return;
+                }
+                speechPlayback.toggle({
+                  phraseId: 'compose-result',
+                  text: resultWithCategory.resultText,
+                  speed: 'slow',
+                });
+              }}
             >
-              {playingSpeed === 'slow' ? 'ゆっくり再生中' : 'ゆっくり'}
+              {resultWithCategory && speechPlayback.isPlaying('compose-result', 'slow')
+                ? t('cta.stop')
+                : t('cta.slow')}
             </PrimaryButton>
             <PrimaryButton
               className="col-span-2"
@@ -203,12 +199,12 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
               variant="soft"
               onClick={() => onNavigate('/practice')}
             >
-              練習する
+              {t('cta.practice')}
             </PrimaryButton>
           </div>
-          {speechNotice ? (
+          {speechPlayback.error ? (
             <p className="mt-2 rounded-[12px] bg-white/75 px-3 py-2 text-xs font-bold leading-relaxed text-[#b42318]">
-              {speechNotice}
+              {speechPlayback.error}
             </p>
           ) : null}
           <div className="mt-3 grid grid-cols-2 gap-2">
@@ -217,10 +213,10 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
               icon={<Bookmark aria-hidden="true" size={18} />}
               onClick={saveResult}
             >
-              保存する
+              {t('cta.savePhrase')}
             </PrimaryButton>
             <PrimaryButton fullWidth variant="blue" onClick={() => onDisplayResult(resultWithCategory)}>
-              大きく表示
+              {t('cta.largeDisplay')}
             </PrimaryButton>
           </div>
           {savedNotice ? (

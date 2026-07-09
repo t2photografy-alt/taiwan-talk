@@ -64,7 +64,9 @@ test('390px主要画面の目視確認用スクリーンショットを保存す
   await page.screenshot({ fullPage: true, path: resolve(outputDir, '05-display.png') });
 
   await page.goto('/settings');
-  await expect(page.getByRole('heading', { name: '設定' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '設定', exact: true })).toBeVisible();
+  await expect(page.getByText('表示', { exact: true })).toBeVisible();
+  await expect(page.getByText('音声設定')).toBeVisible();
   await expect(page.getByText('端末チェック')).toBeVisible();
   await page.screenshot({ fullPage: true, path: resolve(outputDir, '06-settings.png') });
 });

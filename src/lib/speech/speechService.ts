@@ -1,8 +1,19 @@
-import type { SpeechPlaybackOptions, SpeechPlaybackResult, SpeechPlaybackSpeed } from './types';
+import type {
+  SpeechPlaybackOptions,
+  SpeechPlaybackResult,
+  SpeechPlaybackSpeed,
+  VoicePreference,
+} from './types';
+import { readVoicePreference } from './voicePreference';
 
-const NORMAL_RATE = 1;
-const SLOW_RATE = 0.78;
+export const SPEECH_RATES = {
+  normal: 1,
+  slow: 0.6,
+} as const;
+
 const TARGET_LANG = 'zh-TW';
+const FEMALE_VOICE_HINTS = ['female', 'woman', 'girl', 'mei', 'mei-jia', 'ting', 'han', 'li'];
+const MALE_VOICE_HINTS = ['male', 'man', 'boy', 'yun', 'kangkang'];
 
 function getSpeechSynthesis() {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
@@ -20,38 +31,49 @@ function getUtteranceConstructor() {
   return window.SpeechSynthesisUtterance;
 }
 
-function scoreVoice(voice: SpeechSynthesisVoice) {
+function preferenceScore(name: string, voicePreference: VoicePreference) {
+  if (voicePreference === 'auto') {
+    return 0;
+  }
+
+  // Web Speech API voices are device-dependent and do not reliably expose gender.
+  const hints = voicePreference === 'female' ? FEMALE_VOICE_HINTS : MALE_VOICE_HINTS;
+  return hints.some((hint) => name.includes(hint)) ? 8 : 0;
+}
+
+function scoreVoice(voice: SpeechSynthesisVoice, voicePreference: VoicePreference) {
   const lang = voice.lang.toLowerCase();
   const name = voice.name.toLowerCase();
+  const preferred = preferenceScore(name, voicePreference);
 
   if (lang === 'zh-tw') {
-    return 100;
+    return 100 + preferred;
   }
 
   if (lang.includes('zh-tw') || name.includes('taiwan')) {
-    return 90;
+    return 90 + preferred;
   }
 
   if (lang.includes('zh-hant') || name.includes('traditional')) {
-    return 80;
+    return 80 + preferred;
   }
 
   if (lang.startsWith('zh') || name.includes('chinese') || name.includes('mandarin')) {
-    return 70;
+    return 70 + preferred;
   }
 
   return 0;
 }
 
-function pickTaiwanVoice(voices: SpeechSynthesisVoice[]) {
+function pickTaiwanVoice(voices: SpeechSynthesisVoice[], voicePreference: VoicePreference) {
   return [...voices]
-    .map((voice) => ({ voice, score: scoreVoice(voice) }))
+    .map((voice) => ({ voice, score: scoreVoice(voice, voicePreference) }))
     .filter((item) => item.score > 0)
     .sort((a, b) => b.score - a.score)[0]?.voice;
 }
 
 function rateForSpeed(speed: SpeechPlaybackSpeed) {
-  return speed === 'slow' ? SLOW_RATE : NORMAL_RATE;
+  return SPEECH_RATES[speed];
 }
 
 class BrowserSpeechService {
@@ -76,6 +98,7 @@ class BrowserSpeechService {
     const synthesis = getSpeechSynthesis();
     const Utterance = getUtteranceConstructor();
     const callbacks = options.callbacks;
+    const voicePreference = options.voicePreference ?? readVoicePreference();
 
     if (!trimmedText) {
       return { ok: false, message: '再生する台湾華語テキストがありません。' };
@@ -89,7 +112,7 @@ class BrowserSpeechService {
       synthesis.cancel();
 
       const utterance = new Utterance(trimmedText);
-      const voice = pickTaiwanVoice(synthesis.getVoices());
+      const voice = pickTaiwanVoice(synthesis.getVoices(), voicePreference);
 
       utterance.lang = TARGET_LANG;
       utterance.rate = rateForSpeed(options.speed ?? 'normal');

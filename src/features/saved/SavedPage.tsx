@@ -5,6 +5,7 @@ import { Header } from '../../components/Header';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { categoryLabels } from '../../data/presets';
 import type { Phrase, PhraseCategory } from '../../lib/conversation/types';
+import { useDisplayLanguage } from '../../lib/displayLanguage/DisplayLanguageProvider';
 
 type SavedPageProps = {
   savedPhrases: Phrase[];
@@ -43,6 +44,7 @@ export function SavedPage({
 }: SavedPageProps) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<PhraseCategory | 'all'>('all');
+  const { t } = useDisplayLanguage();
 
   const filteredPhrases = useMemo(() => {
     const loweredQuery = query.trim().toLowerCase();
@@ -63,8 +65,8 @@ export function SavedPage({
   return (
     <div>
       <Header
-        title="保存"
-        subtitle="よく使う言い方を、すぐ見返す"
+        title={t('page.saved.title')}
+        subtitle={t('page.saved.subtitle')}
         onMenu={() => onNavigate('/settings')}
       />
 
@@ -140,14 +142,14 @@ export function SavedPage({
                   variant="soft"
                   onClick={() => onDisplay(phrase)}
                 >
-                  大きく表示
+                  {t('cta.largeDisplay')}
                 </PrimaryButton>
                 <PrimaryButton
                   icon={<Mic2 aria-hidden="true" size={18} />}
                   variant="blue"
                   onClick={() => onPractice(phrase)}
                 >
-                  練習する
+                  {t('cta.practice')}
                 </PrimaryButton>
                 <PrimaryButton
                   icon={<Trash2 aria-hidden="true" size={18} />}

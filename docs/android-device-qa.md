@@ -34,7 +34,11 @@ https://taiwan-talk.vercel.app/
 
 - 使う画面または練習画面で `聞く` を押す。
 - `ゆっくり聞く` も押す。
+- `聞く` を2回押すと停止する。
+- `ゆっくり` または `ゆっくり聞く` を2回押すと停止する。
+- `ゆっくり` が通常より遅く聞こえる。
 - 設定画面の `音声テスト` を押す。
+- 設定画面で音声タイプを切り替えたあと、音声テストを試す。
 - 端末の音量、マナーモード、ブラウザの音声対応によって結果が変わる可能性がある。
 
 ### 4. 録音
@@ -66,6 +70,9 @@ https://taiwan-talk.vercel.app/
 
 ### 8. 設定 / 端末チェック
 
+- 上部の表示言語切替で `台灣華語` に切り替えられる。
+- 表示言語を `日本語` に戻せる。
+- 設定画面で音声タイプを `自動` / `女性寄り` / `男性寄り` から選べる。
 - 設定画面で `端末チェック` が表示される。
 - 音声再生、録音、マイク、保存、表示モード、通信状態が表示される。
 - `音声テスト` が動く。
@@ -101,6 +108,9 @@ https://taiwan-talk.vercel.app/
 
 - [ ] Normal playback OK
 - [ ] Slow playback OK
+- [ ] Tap normal playback again to stop
+- [ ] Tap slow playback again to stop
+- [ ] Voice type setting tested
 - Note:
 
 ## Recording
@@ -120,6 +130,8 @@ https://taiwan-talk.vercel.app/
 
 - [ ] Large display readable
 - [ ] Bottom nav hidden
+- [ ] Display language can switch to Taiwan Mandarin
+- [ ] Display language can switch back to Japanese
 - Note:
 
 ## Issues
@@ -130,5 +142,7 @@ https://taiwan-talk.vercel.app/
 ## 注意
 
 - 音声再生と録音はブラウザと端末設定に依存します。
-- 発音チェックは Phase 2D 時点では仮表示です。
+- 発音チェックは Phase 2E 時点でも仮表示です。
 - PWAのホーム追加可否や表示は、Android/Chrome/端末メーカーの仕様差を受けます。
+- 音声タイプは端末内のWeb Speech API voiceに依存し、男性/女性が全端末で保証されるものではありません。
+- 台湾華語表示のUI文言は今後の確認対象です。

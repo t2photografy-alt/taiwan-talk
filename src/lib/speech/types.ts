@@ -1,5 +1,7 @@
 export type SpeechPlaybackSpeed = 'normal' | 'slow';
 
+export type VoicePreference = 'auto' | 'female' | 'male';
+
 export type SpeechPlaybackCallbacks = {
   onStart?: () => void;
   onEnd?: () => void;
@@ -8,6 +10,7 @@ export type SpeechPlaybackCallbacks = {
 
 export type SpeechPlaybackOptions = {
   speed?: SpeechPlaybackSpeed;
+  voicePreference?: VoicePreference;
   callbacks?: SpeechPlaybackCallbacks;
 };
 

@@ -25,6 +25,8 @@ const guardedButtonLabels = [
   '録音テスト',
   '録音を聞く',
   '状態を再確認',
+  '女性寄り',
+  '男性寄り',
 ];
 
 async function clearSavedPhrases(page: Page) {
@@ -64,14 +66,24 @@ async function installMockSpeech(page: Page) {
       value: MockSpeechSynthesisUtterance,
     });
 
+    let activeUtterance: SpeechSynthesisUtterance | null = null;
+
     Object.defineProperty(window, 'speechSynthesis', {
       configurable: true,
       value: {
-        cancel() {},
+        cancel() {
+          if (!activeUtterance) {
+            return;
+          }
+
+          const ended = activeUtterance;
+          activeUtterance = null;
+          ended.onend?.(new Event('end') as SpeechSynthesisEvent);
+        },
         getVoices: () => [voice],
         speak: (utterance: SpeechSynthesisUtterance) => {
+          activeUtterance = utterance;
           window.setTimeout(() => utterance.onstart?.(new Event('start') as SpeechSynthesisEvent), 0);
-          window.setTimeout(() => utterance.onend?.(new Event('end') as SpeechSynthesisEvent), 10);
         },
       },
     });
@@ -259,7 +271,16 @@ test('Flow A: 使う画面から大きく表示して戻れる', async ({ page }
   await expectPageChromeHealthy(page);
 
   await page.getByRole('button', { name: '聞く' }).first().click();
+  await expect(page.getByRole('button', { name: '停止' }).first()).toBeVisible();
+  await page.getByRole('button', { name: '停止' }).first().click();
+  await expect(page.getByRole('button', { name: '聞く' }).first()).toBeVisible();
+
   await page.getByRole('button', { name: 'ゆっくり' }).first().click();
+  await expect(page.getByRole('button', { name: '停止' }).first()).toBeVisible();
+  await page.getByRole('button', { name: '聞く' }).first().click();
+  await expect(page.getByRole('button', { name: '停止' }).first()).toBeVisible();
+  await page.getByRole('button', { name: '停止' }).first().click();
+  await expect(page.getByRole('button', { name: 'ゆっくり' }).first()).toBeVisible();
   await expectPageChromeHealthy(page);
 
   await page.getByRole('button', { name: '大きく表示' }).first().click();
@@ -346,7 +367,20 @@ test('Flow F: 左上メニューから設定へ進み禁止文言が出ていな
   await page.goto('/');
   await page.getByLabel('設定を開く').click();
   await expect(page).toHaveURL('/settings');
-  await expect(page.getByRole('heading', { name: '設定' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '設定', exact: true })).toBeVisible();
+  await expect(page.getByText('表示', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '台灣華語' }).click();
+  await expect(page.getByRole('button', { name: '使用' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '製作' })).toBeVisible();
+  await page.getByRole('button', { name: '日本語' }).click();
+  await expect(page.getByRole('button', { name: '使う', exact: true })).toBeVisible();
+  await expect(page.getByText('音声設定')).toBeVisible();
+  await page.getByRole('button', { name: '女性寄り' }).click();
+  await expect(page.getByRole('button', { name: '女性寄り' })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: '男性寄り' }).click();
+  await expect(page.getByRole('button', { name: '男性寄り' })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: '自動' }).click();
+  await expect(page.getByRole('button', { name: '自動' })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByText('端末チェック')).toBeVisible();
   await expect(page.getByText('この端末で音声・録音・保存が使えるか確認します。')).toBeVisible();
   await expect(page.getByRole('button', { name: '音声テスト' })).toBeVisible();

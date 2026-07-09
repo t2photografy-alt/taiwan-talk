@@ -1,18 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Mic2, RefreshCw, ShieldCheck, Smartphone, Sparkles, Square, Volume2 } from 'lucide-react';
+import { Mic2, RefreshCw, ShieldCheck, SlidersHorizontal, Smartphone, Sparkles, Square, Volume2 } from 'lucide-react';
 import { Header } from '../../components/Header';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { deviceCapabilities } from '../../lib/device/deviceCapabilities';
 import type { DeviceCapabilitySnapshot } from '../../lib/device/types';
+import { useDisplayLanguage } from '../../lib/displayLanguage/DisplayLanguageProvider';
+import type { TranslationKey } from '../../lib/displayLanguage/types';
 import { recorderService } from '../../lib/recorder/recorderService';
 import type { RecordedAudio, RecorderSession } from '../../lib/recorder/types';
 import { speechService } from '../../lib/speech/speechService';
+import type { VoicePreference } from '../../lib/speech/types';
+import { readVoicePreference, writeVoicePreference } from '../../lib/speech/voicePreference';
 
 type SettingsPageProps = {
   onNavigate: (path: string) => void;
 };
 
 const SPEECH_TEST_TEXT = '你好，這是 Taiwan Talk 的音聲測試。';
+const voicePreferenceOptions: Array<{ value: VoicePreference; labelKey: TranslationKey }> = [
+  { value: 'auto', labelKey: 'settings.voiceAuto' },
+  { value: 'female', labelKey: 'settings.voiceFemale' },
+  { value: 'male', labelKey: 'settings.voiceMale' },
+];
+type TFunction = (key: TranslationKey) => string;
 
 function capabilityLabel(isSupported: boolean) {
   return isSupported ? '対応' : '未対応';
@@ -34,35 +44,35 @@ function microphoneLabel(capabilities: DeviceCapabilitySnapshot) {
   return '許可が必要';
 }
 
-function statusLabel(capabilities: DeviceCapabilitySnapshot) {
+function statusLabel(capabilities: DeviceCapabilitySnapshot, t: TFunction) {
   return [
     {
-      label: '音声再生',
+      label: t('settings.speech'),
       value: capabilityLabel(capabilities.speechSynthesis === 'supported'),
       tone: supportTone(capabilities.speechSynthesis === 'supported'),
     },
     {
-      label: '録音',
+      label: t('settings.recording'),
       value: capabilityLabel(capabilities.recording === 'supported'),
       tone: supportTone(capabilities.recording === 'supported'),
     },
     {
-      label: 'マイク',
+      label: t('settings.microphone'),
       value: microphoneLabel(capabilities),
       tone: capabilities.microphonePermission === 'unavailable' ? 'text-[#b42318]' : 'text-[#344054]',
     },
     {
-      label: '保存',
+      label: t('settings.storage'),
       value: capabilities.localStorage === 'supported' ? '端末内保存に対応' : '未対応',
       tone: supportTone(capabilities.localStorage === 'supported'),
     },
     {
-      label: '表示モード',
+      label: t('settings.displayMode'),
       value: capabilities.displayMode === 'standalone' ? 'ホーム追加表示' : 'ブラウザ',
       tone: 'text-[#344054]',
     },
     {
-      label: '通信状態',
+      label: t('settings.network'),
       value: capabilities.networkStatus === 'offline' ? 'オフライン' : 'オンライン',
       tone: capabilities.networkStatus === 'offline' ? 'text-[#b42318]' : 'text-emerald-700',
     },
@@ -77,7 +87,9 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
   const [recordingStatus, setRecordingStatus] = useState('未実行');
   const [isRecording, setIsRecording] = useState(false);
   const [recordedAudio, setRecordedAudio] = useState<RecordedAudio | null>(null);
+  const [voicePreference, setVoicePreference] = useState<VoicePreference>(() => readVoicePreference());
   const recorderSessionRef = useRef<RecorderSession | null>(null);
+  const { t } = useDisplayLanguage();
 
   const refreshCapabilities = useCallback(async () => {
     const nextCapabilities = await deviceCapabilities.getSnapshot();
@@ -114,6 +126,7 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
 
   const handleSpeechTest = () => {
     const result = speechService.speak(SPEECH_TEST_TEXT, {
+      voicePreference,
       callbacks: {
         onError: () => {
           setAudioStatus('この端末では音声再生が使えない可能性があります');
@@ -189,11 +202,16 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
     });
   };
 
+  const handleVoicePreferenceChange = (preference: VoicePreference) => {
+    setVoicePreference(preference);
+    writeVoicePreference(preference);
+  };
+
   return (
     <div>
       <Header
-        title="設定"
-        subtitle="Taiwan Talk の前提と使い方"
+        title={t('page.settings.title')}
+        subtitle={t('page.settings.subtitle')}
         onMenu={() => onNavigate('/')}
       />
 
@@ -222,15 +240,47 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
 
         <article className="glass-card rounded-[20px] p-4">
           <div className="mb-2 flex items-center gap-2">
-            <Smartphone aria-hidden="true" className="text-[var(--brand-blue)]" size={20} />
-            <h2 className="text-base font-black text-[#141821]">端末チェック</h2>
+            <SlidersHorizontal aria-hidden="true" className="text-[var(--brand-red)]" size={20} />
+            <h2 className="text-base font-black text-[#141821]">{t('settings.voiceSettings')}</h2>
           </div>
           <p className="mb-3 text-sm font-bold leading-relaxed text-[#344054]">
-            この端末で音声・録音・保存が使えるか確認します。
+            {t('settings.voiceDescription')}
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            {voicePreferenceOptions.map((item) => {
+              const selected = voicePreference === item.value;
+
+              return (
+                <button
+                  key={item.value}
+                  aria-pressed={selected}
+                  className={[
+                    'min-h-11 rounded-[14px] border px-2 text-sm font-black whitespace-nowrap transition focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-200',
+                    selected
+                      ? 'border-[var(--brand-blue)] bg-[#eef6ff] text-[var(--brand-blue)]'
+                      : 'border-[#d9e1ee] bg-white text-[#344054] active:bg-[#f3f6fb]',
+                  ].join(' ')}
+                  type="button"
+                  onClick={() => handleVoicePreferenceChange(item.value)}
+                >
+                  {t(item.labelKey)}
+                </button>
+              );
+            })}
+          </div>
+        </article>
+
+        <article className="glass-card rounded-[20px] p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <Smartphone aria-hidden="true" className="text-[var(--brand-blue)]" size={20} />
+            <h2 className="text-base font-black text-[#141821]">{t('settings.deviceCheck')}</h2>
+          </div>
+          <p className="mb-3 text-sm font-bold leading-relaxed text-[#344054]">
+            {t('settings.deviceCheckDescription')}
           </p>
 
           <dl className="grid grid-cols-1 gap-2 text-sm">
-            {statusLabel(capabilities).map((item) => (
+            {statusLabel(capabilities, t).map((item) => (
               <div
                 className="flex min-h-10 items-center justify-between gap-3 rounded-[14px] border border-[#e5ebf3] bg-white px-3 py-2"
                 key={item.label}
@@ -247,14 +297,14 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
               variant="soft"
               onClick={handleSpeechTest}
             >
-              音声テスト
+              {t('settings.speechTest')}
             </PrimaryButton>
             <PrimaryButton
               icon={isRecording ? <Square aria-hidden="true" size={17} /> : <Mic2 aria-hidden="true" size={18} />}
               variant={isRecording ? 'danger' : 'soft'}
               onClick={handleRecordingTest}
             >
-              {isRecording ? '停止' : '録音テスト'}
+              {isRecording ? t('cta.stop') : t('settings.recordingTest')}
             </PrimaryButton>
             {recordedAudio ? (
               <PrimaryButton icon={<Volume2 aria-hidden="true" size={18} />} variant="ghost" onClick={playRecordedAudio}>
@@ -266,7 +316,7 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
               variant="ghost"
               onClick={() => void refreshCapabilities()}
             >
-              状態を再確認
+              {t('settings.recheck')}
             </PrimaryButton>
           </div>
 
