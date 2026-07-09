@@ -97,4 +97,4 @@ $env:BASE_URL="https://taiwan-talk.vercel.app"
 npm run qa:flow
 ```
 
-Latest production QA result: run `BASE_URL=https://taiwan-talk.vercel.app npm run qa:flow`.
+Latest production QA result: `BASE_URL=https://taiwan-talk.vercel.app npm run qa:flow` passed with 8 tests after the Phase 3A deploy.

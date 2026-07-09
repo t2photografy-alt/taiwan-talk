@@ -60,6 +60,8 @@
 - OpenAI Responses API と Structured Output 相当のJSONレスポンスを扱う土台を追加。
 - API key未設定時はモックへフォールバックできるようにした。
 - 生成結果も `needsNativeCheck` として扱う方針を維持。
+- GitHubへpushし、Vercel Productionへ反映済み。
+- Production URLで `qa:flow` 8 passed。
 
 ## 今日進んだこと
 
@@ -93,6 +95,8 @@
 - フロントから直接API keyを持たない構造にした。
 - API key未設定時はモックへフォールバックできるようにした。
 - 生成結果も `needsNativeCheck` として扱う方針を維持。
+- GitHubへpushし、Vercel Productionへ反映した。
+- Production URLで `qa:flow` 8 passedを確認した。
 
 ## Xに出してよい実進捗
 

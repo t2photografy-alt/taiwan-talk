@@ -9,7 +9,7 @@ Taiwan Talk is a Taiwan Mandarin and Japanese conversation support app for quick
 - `npm run build`: passed
 - `npm run qa:flow`: passed
 - `npm run qa:screenshots`: passed
-- Production QA: `BASE_URL=https://taiwan-talk.vercel.app npm run qa:flow` passed with 7 tests
+- Production QA: `BASE_URL=https://taiwan-talk.vercel.app npm run qa:flow` passed
 
 ## Phase 2A Status
 
@@ -54,6 +54,7 @@ Taiwan Talk is a Taiwan Mandarin and Japanese conversation support app for quick
 - OpenAI API credentials are server-side environment variables only
 - Missing or disabled API configuration falls back to the existing mock generation path
 - Generated phrases are still marked as `needsNativeCheck` / `needs-native-check`
+- Production deploy completed and `BASE_URL=https://taiwan-talk.vercel.app npm run qa:flow` passed with 8 tests
 
 ## Tech Stack
 
