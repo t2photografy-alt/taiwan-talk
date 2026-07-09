@@ -24,6 +24,13 @@ Taiwan Talk is a Taiwan Mandarin and Japanese conversation support app for quick
 - Review targets are listed in `docs/phrase-review.md`
 - Use `docs/phrase-review-template.md` when confirming, revising, or replacing phrases
 
+## Phase 2C Status
+
+- First-pass phrase review applied to the 9 presets
+- Pinyin updated with tone marks for preset phrases
+- `needsNativeCheck: true` and `reviewStatus: needs-native-check` are still maintained
+- Phrase wording is still not native-approved
+
 ## Tech Stack
 
 - React
