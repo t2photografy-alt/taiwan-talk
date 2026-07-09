@@ -17,6 +17,13 @@ Taiwan Talk is a Taiwan Mandarin and Japanese conversation support app for quick
 - Recording: browser `MediaRecorder` recording foundation added
 - Pronunciation analysis: still mocked after recording
 
+## Phase 2B Status
+
+- Taiwan Mandarin presets are managed with `needsNativeCheck` and `reviewStatus`
+- Current preset wording includes draft phrases that still need native review
+- Review targets are listed in `docs/phrase-review.md`
+- Use `docs/phrase-review-template.md` when confirming, revising, or replacing phrases
+
 ## Tech Stack
 
 - React

@@ -42,6 +42,7 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
           <p className="text-sm font-bold leading-relaxed text-[#667085]">
             現在は開発中のため、AI生成と発音チェック結果は仮の表示です。
             音声再生と録音はブラウザ機能を使った土台実装です。
+            台湾華語の表現は、今後ネイティブ確認を入れて調整予定です。
           </p>
         </article>
       </section>

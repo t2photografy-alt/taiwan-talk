@@ -1,7 +1,19 @@
 import type { Phrase } from '../lib/conversation/types';
 
+export type PhraseReviewStatus =
+  | 'draft'
+  | 'needs-native-check'
+  | 'reviewed'
+  | 'approved'
+  | 'rejected';
+
 export type PresetPhrase = Phrase & {
   needsNativeCheck: boolean;
+  reviewStatus: PhraseReviewStatus;
+  usageScene: string;
+  literalMeaning?: string;
+  naturalnessNote: string;
+  reviewerNote?: string;
 };
 
 const createdAt = '2026-07-08T00:00:00.000Z';
@@ -20,6 +32,10 @@ export const presetPhrases: PresetPhrase[] = [
     nuance: '「很想見你」は、会いたかった気持ちを自然に出す言い方です。',
     readabilityScore: 86,
     needsNativeCheck: true,
+    reviewStatus: 'needs-native-check',
+    usageScene: 'イベント会場で久しぶりに会った友達への声かけ',
+    literalMeaning: '久しぶり、本当にあなたに会いたかった',
+    naturalnessNote: '友達向けのカジュアル表現として仮置き。台湾華語としての自然さは要確認。',
     createdAt,
     updatedAt: createdAt,
     isFavorite: true,
@@ -38,6 +54,10 @@ export const presetPhrases: PresetPhrase[] = [
     nuance: '短く、明るく、次につなげる言い方です。',
     readabilityScore: 84,
     needsNativeCheck: true,
+    reviewStatus: 'needs-native-check',
+    usageScene: '別れ際やメッセージで、また会いたい気持ちを伝える',
+    literalMeaning: '私はまたあなたに会いたい',
+    naturalnessNote: 'ストレートな表現として仮置き。距離感や語尾の自然さは要確認。',
     createdAt,
     updatedAt: createdAt,
     isFavorite: false,
@@ -56,6 +76,10 @@ export const presetPhrases: PresetPhrase[] = [
     nuance: 'ステージ後に勢いよく褒めたい時の仮文です。',
     readabilityScore: 82,
     needsNativeCheck: true,
+    reviewStatus: 'needs-native-check',
+    usageScene: 'パフォーマンス後に相手を明るく褒める',
+    literalMeaning: 'とてもすごい、超かっこいい',
+    naturalnessNote: '勢いのある褒め言葉として仮置き。推し活/友達向けの温度感は要確認。',
     createdAt,
     updatedAt: createdAt,
     isFavorite: false,
@@ -74,6 +98,10 @@ export const presetPhrases: PresetPhrase[] = [
     nuance: '軽くあたたかい感謝です。',
     readabilityScore: 90,
     needsNativeCheck: true,
+    reviewStatus: 'needs-native-check',
+    usageScene: '友達や出演者へ軽く感謝を伝える',
+    literalMeaning: 'あなたにありがとう',
+    naturalnessNote: '短い感謝表現として仮置き。語尾のカジュアルさは要確認。',
     createdAt,
     updatedAt: createdAt,
     isFavorite: false,
@@ -92,6 +120,10 @@ export const presetPhrases: PresetPhrase[] = [
     nuance: '友達同士で自然に誘う言い方です。',
     readabilityScore: 83,
     needsNativeCheck: true,
+    reviewStatus: 'needs-native-check',
+    usageScene: '友達同士で一緒に写真を撮りたいと誘う',
+    literalMeaning: '私たちは一緒に写真を撮ろう',
+    naturalnessNote: '友達向けの誘い文として仮置き。相手との距離感に合うか要確認。',
     createdAt,
     updatedAt: createdAt,
     isFavorite: false,
@@ -111,6 +143,10 @@ export const presetPhrases: PresetPhrase[] = [
     nuance: '短く丁寧に確認する言い方です。',
     readabilityScore: 88,
     needsNativeCheck: true,
+    reviewStatus: 'needs-native-check',
+    usageScene: '写真撮影の許可を相手や場に確認する',
+    literalMeaning: '写真を撮ってもいいですか',
+    naturalnessNote: '許可取りの短い表現として仮置き。より丁寧な言い方が必要な場面は要確認。',
     createdAt,
     updatedAt: createdAt,
     isFavorite: false,
@@ -129,6 +165,10 @@ export const presetPhrases: PresetPhrase[] = [
     nuance: 'イベント終わりにまっすぐ褒める仮文です。',
     readabilityScore: 80,
     needsNativeCheck: true,
+    reviewStatus: 'needs-native-check',
+    usageScene: 'イベントやライブ後にパフォーマンスを褒める',
+    literalMeaning: '今日の表演は本当にすばらしかった',
+    naturalnessNote: 'イベント後の褒め言葉として仮置き。表演/演出など語の選び方は要確認。',
     createdAt,
     updatedAt: createdAt,
     isFavorite: false,
@@ -147,6 +187,10 @@ export const presetPhrases: PresetPhrase[] = [
     nuance: 'がんばって話していることをやわらかく伝えます。',
     readabilityScore: 78,
     needsNativeCheck: true,
+    reviewStatus: 'needs-native-check',
+    usageScene: '自分が台湾華語を勉強中であることを伝える',
+    literalMeaning: '私は少し台湾華語を学んでいる',
+    naturalnessNote: '学習中であることを伝える仮文。台灣華語という呼び方の自然さは要確認。',
     createdAt,
     updatedAt: createdAt,
     isFavorite: false,
@@ -165,6 +209,10 @@ export const presetPhrases: PresetPhrase[] = [
     nuance: 'イベントの別れ際に使いやすい、少し丁寧な仮文です。',
     readabilityScore: 79,
     needsNativeCheck: true,
+    reviewStatus: 'needs-native-check',
+    usageScene: 'イベントの別れ際に、来年も会いたいと伝える',
+    literalMeaning: '来年もまたあなたに会いたい',
+    naturalnessNote: '少し丁寧な別れ際の表現として仮置き。相手との関係性に合うか要確認。',
     createdAt,
     updatedAt: createdAt,
     isFavorite: false,

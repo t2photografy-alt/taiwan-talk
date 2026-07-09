@@ -343,6 +343,7 @@ test('Flow F: 左上メニューから設定へ進み禁止文言が出ていな
   await page.getByLabel('設定を開く').click();
   await expect(page).toHaveURL('/settings');
   await expect(page.getByRole('heading', { name: '設定' })).toBeVisible();
+  await expect(page.getByText('台湾華語の表現は、今後ネイティブ確認を入れて調整予定です。')).toBeVisible();
   await expectNoForbiddenText(page);
   await expectLogoHealthy(page);
   await expectPageChromeHealthy(page);
@@ -356,6 +357,9 @@ test('390px layout smoke: required pages keep nav, logo, buttons, and width heal
     await expectLogoHealthy(page);
     await expectBottomNavVisible(page);
     await expectNoForbiddenText(page);
+    if (path === '/settings') {
+      await expect(page.getByText('台湾華語の表現は、今後ネイティブ確認を入れて調整予定です。')).toBeVisible();
+    }
     if (path === '/practice') {
       await expect(page.getByText('録音待機')).toBeVisible();
     }
