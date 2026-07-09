@@ -63,6 +63,13 @@ Taiwan Talk is a Taiwan Mandarin and Japanese conversation support app for quick
 - AI generation results remain `needsNativeCheck` / `needs-native-check`
 - If the API is disabled, missing, or returns an off-intent result, the app falls back to mock generation
 
+## Phase 3C Status
+
+- AI generation quality QA cases are documented in `docs/ai-generation-qa.md`
+- `npm run qa:ai-generation` collects generation samples from the configured API
+- Reports are written to `outputs/ai-generation-qa/latest.md`
+- Generation quality is still reviewed by humans; automated checks only flag structure and likely attention points
+
 ## Tech Stack
 
 - React
@@ -92,14 +99,18 @@ npm run build
 ```bash
 npm run qa:flow
 npm run qa:screenshots
+npm run qa:ai-generation
 ```
 
 `qa:flow` does not require generated phrases to match one fixed sentence. It checks the generated result card, Taiwan Mandarin-like text, save/display/practice routes, and the native-check notice so the same flow works with mock fallback and AI-enabled Production.
+
+`qa:ai-generation` is for generation quality sampling. It posts the documented cases to `/api/conversation/generate`, checks structure and review flags, then writes a Markdown report under `outputs/ai-generation-qa/`. It is not a native-language approval step.
 
 To run the flow QA against a deployed URL:
 
 ```bash
 BASE_URL=<Vercel URL> npm run qa:flow
+BASE_URL=<Vercel URL> npm run qa:ai-generation
 ```
 
 PowerShell:
@@ -107,6 +118,7 @@ PowerShell:
 ```powershell
 $env:BASE_URL="<Vercel URL>"
 npm run qa:flow
+npm run qa:ai-generation
 ```
 
 `npm run qa:screenshots` writes review images to `outputs/visual-qa/`.

@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "qa:flow": "node scripts/run-playwright.mjs tests/e2e/user-flows.spec.ts",
     "qa:flow:headed": "node scripts/run-playwright.mjs tests/e2e/user-flows.spec.ts --headed",
-    "qa:screenshots": "node scripts/run-playwright.mjs tests/e2e/screenshots.spec.ts"
+    "qa:screenshots": "node scripts/run-playwright.mjs tests/e2e/screenshots.spec.ts",
+    "qa:ai-generation": "node scripts/run-ai-generation-qa.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "latest",
