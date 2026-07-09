@@ -22,7 +22,7 @@ const cases = [
     },
     expected: '写真/撮影許可の意図を維持し、再会挨拶へ飛ばない。',
     intentKeywords: ['拍', '照', '照片', '相片'],
-    forbiddenKeywords: ['好久不見'],
+    forbiddenKeywords: ['好久不見', '幫我拍'],
   },
   {
     id: 'C02',
@@ -100,6 +100,51 @@ const cases = [
     forbiddenKeywords: ['好久不見'],
   },
   {
+    id: 'C07',
+    title: 'やんわり断る',
+    request: {
+      mode: 'compose',
+      sourceText: '今日は少し難しいですが、また次の機会にお願いします',
+      sourceLanguage: 'ja',
+      targetLanguage: 'zh-TW',
+      tone: 'polite',
+      category: 'dm',
+    },
+    expected: 'やんわり断る。失礼にならず、次回につなげる。DMでも対面でも使いやすい。',
+    intentKeywords: ['不好意思', '抱歉', '今天', '下次', '機會', '改天', '有點難'],
+    forbiddenKeywords: ['不想', '不要', '拒絕'],
+  },
+  {
+    id: 'C08',
+    title: '写真を送る',
+    request: {
+      mode: 'compose',
+      sourceText: 'あとで写真を送りますね！',
+      sourceLanguage: 'ja',
+      targetLanguage: 'zh-TW',
+      tone: 'friendly',
+      category: 'photo',
+    },
+    expected: '後で写真を送る約束。撮影依頼と混同せず、DMでも対面でも使いやすい。',
+    intentKeywords: ['照片', '傳', '發', '送', '給你', '等一下', '晚點'],
+    forbiddenKeywords: ['幫我拍', '可以拍', '可以跟你拍'],
+  },
+  {
+    id: 'C09',
+    title: '日本語は少し話せますか',
+    request: {
+      mode: 'compose',
+      sourceText: '日本語は少し話せますか？',
+      sourceLanguage: 'ja',
+      targetLanguage: 'zh-TW',
+      tone: 'polite',
+      category: 'greeting',
+    },
+    expected: '相手に日本語が話せるか丁寧に聞く。失礼になりにくく、対面会話の入口として自然。',
+    intentKeywords: ['日文', '日語', '日本語', '會說', '會講'],
+    forbiddenKeywords: ['我會說', '我在學'],
+  },
+  {
     id: 'M01',
     title: 'また遊ぼう',
     request: {
@@ -163,6 +208,22 @@ const cases = [
     intentKeywords: ['照片', '傳', '等一下', '沒問題', '給你'],
     forbiddenKeywords: ['好久不見'],
   },
+  {
+    id: 'M05',
+    title: 'やんわり断る返信',
+    request: {
+      mode: 'message-reply',
+      sourceText: '今天晚上一起去吃飯嗎？',
+      sourceLanguage: 'zh-TW',
+      targetLanguage: 'zh-TW',
+      tone: 'polite',
+      category: 'dm',
+      replyIntent: 'やんわり断る',
+    },
+    expected: '丁寧に断る。申し訳なさと次回につなげるニュアンス。きつい拒否にしない。',
+    intentKeywords: ['不好意思', '抱歉', '今天', '下次', '改天', '有機會', '沒辦法'],
+    forbiddenKeywords: ['不想', '不要', '拒絕'],
+  },
 ];
 
 const mockResults = {
@@ -172,10 +233,14 @@ const mockResults = {
   C04: ['明年也想再見到你！', 'míng nián yě xiǎng zài jiàn dào nǐ'],
   C05: ['謝謝你讓我拍照！', 'xiè xie nǐ ràng wǒ pāi zhào'],
   C06: ['我正在學一點台灣華語。', 'wǒ zhèng zài xué yì diǎn tái wān huá yǔ'],
+  C07: ['不好意思，今天有點難，下次有機會再麻煩你。', 'bù hǎo yì si, jīn tiān yǒu diǎn nán, xià cì yǒu jī huì zài má fán nǐ'],
+  C08: ['我晚點把照片傳給你！', 'wǒ wǎn diǎn bǎ zhào piàn chuán gěi nǐ'],
+  C09: ['請問你會說一點日文嗎？', 'qǐng wèn nǐ huì shuō yì diǎn rì wén ma'],
   M01: ['好啊，下次再一起玩！', 'hǎo a, xià cì zài yì qǐ wán'],
   M02: ['我也很開心，謝謝你讓我拍照！', 'wǒ yě hěn kāi xīn, xiè xie nǐ ràng wǒ pāi zhào'],
   M03: ['一定會，明年也想再見到你！', 'yí dìng huì, míng nián yě xiǎng zài jiàn dào nǐ'],
   M04: ['沒問題，我等一下傳照片給你！', 'méi wèn tí, wǒ děng yí xià chuán zhào piàn gěi nǐ'],
+  M05: ['不好意思，今天晚上我有點不方便，下次有機會再一起吃飯。', 'bù hǎo yì si, jīn tiān wǎn shàng wǒ yǒu diǎn bù fāng biàn, xià cì yǒu jī huì zài yì qǐ chī fàn'],
 };
 
 function createMockResponse(testCase, reason) {

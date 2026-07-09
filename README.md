@@ -72,6 +72,13 @@ It is not an event-only app. Event conversations are one representative use case
 - Reports are written to `outputs/ai-generation-qa/latest.md`
 - Generation quality is still reviewed by humans; automated checks only flag structure and likely attention points
 
+## Phase 3D Status
+
+- AI generation samples are reviewed in `docs/ai-generation-review.md`
+- `qa:ai-generation` is used to collect generation samples, while `ai-generation-review` is the human-readable first-pass review record
+- The review keeps Taiwan Talk's app fit broad: face-to-face, SNS/DM, photo exchanges, greetings after meeting again, thanks, light invitations, gentle declines, and replies
+- Even when a case is marked 仮OK, generated Taiwan Mandarin is not native-approved
+
 ## Tech Stack
 
 - React
@@ -107,6 +114,8 @@ npm run qa:ai-generation
 `qa:flow` does not require generated phrases to match one fixed sentence. It checks the generated result card, Taiwan Mandarin-like text, save/display/practice routes, and the native-check notice so the same flow works with mock fallback and AI-enabled Production.
 
 `qa:ai-generation` is for generation quality sampling. It posts the documented cases to `/api/conversation/generate`, checks structure and review flags, then writes a Markdown report under `outputs/ai-generation-qa/`. It is not a native-language approval step.
+
+Human-readable first-pass review notes are kept in `docs/ai-generation-review.md`. Passing `qa:ai-generation` does not mean AI generation quality is finished.
 
 To run the flow QA against a deployed URL:
 
