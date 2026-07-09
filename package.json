@@ -7,9 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "qa:flow": "playwright test tests/e2e/user-flows.spec.ts",
-    "qa:flow:headed": "playwright test tests/e2e/user-flows.spec.ts --headed",
-    "qa:screenshots": "playwright test tests/e2e/screenshots.spec.ts"
+    "qa:flow": "node scripts/run-playwright.mjs tests/e2e/user-flows.spec.ts",
+    "qa:flow:headed": "node scripts/run-playwright.mjs tests/e2e/user-flows.spec.ts --headed",
+    "qa:screenshots": "node scripts/run-playwright.mjs tests/e2e/screenshots.spec.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "latest",

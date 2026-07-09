@@ -10,11 +10,118 @@ const forbiddenTerms = [
   '台湾トーク',
 ];
 
-const guardedButtonLabels = ['聞く', 'ゆっくり', '大きく表示', '練習する', 'ゆっくり聞く', '苦手に保存'];
+const guardedButtonLabels = [
+  '聞く',
+  'ゆっくり',
+  '大きく表示',
+  '練習する',
+  'ゆっくり聞く',
+  '停止',
+  '自分の音声を聞く',
+  'もう一回録音',
+  '発音チェックへ',
+  '苦手に保存',
+];
 
 async function clearSavedPhrases(page: Page) {
   await page.goto('/');
   await page.evaluate(() => window.localStorage.clear());
+}
+
+async function installMockSpeech(page: Page) {
+  await page.addInitScript(() => {
+    const voice = {
+      default: true,
+      lang: 'zh-TW',
+      localService: true,
+      name: 'Mock Taiwan Voice',
+      voiceURI: 'mock-taiwan-voice',
+    } as SpeechSynthesisVoice;
+
+    class MockSpeechSynthesisUtterance extends EventTarget {
+      lang = '';
+      pitch = 1;
+      rate = 1;
+      text: string;
+      voice: SpeechSynthesisVoice | null = null;
+      volume = 1;
+      onstart: ((event: SpeechSynthesisEvent) => void) | null = null;
+      onend: ((event: SpeechSynthesisEvent) => void) | null = null;
+      onerror: ((event: SpeechSynthesisErrorEvent) => void) | null = null;
+
+      constructor(text: string) {
+        super();
+        this.text = text;
+      }
+    }
+
+    Object.defineProperty(window, 'SpeechSynthesisUtterance', {
+      configurable: true,
+      value: MockSpeechSynthesisUtterance,
+    });
+
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: {
+        cancel() {},
+        getVoices: () => [voice],
+        speak: (utterance: SpeechSynthesisUtterance) => {
+          window.setTimeout(() => utterance.onstart?.(new Event('start') as SpeechSynthesisEvent), 0);
+          window.setTimeout(() => utterance.onend?.(new Event('end') as SpeechSynthesisEvent), 10);
+        },
+      },
+    });
+  });
+}
+
+async function installMockRecorder(page: Page) {
+  await page.addInitScript(() => {
+    class MockMediaRecorder extends EventTarget {
+      static isTypeSupported() {
+        return true;
+      }
+
+      mimeType: string;
+      state: RecordingState = 'inactive';
+
+      constructor(_stream: MediaStream, options?: MediaRecorderOptions) {
+        super();
+        this.mimeType = options?.mimeType ?? 'audio/webm';
+      }
+
+      start() {
+        this.state = 'recording';
+      }
+
+      stop() {
+        if (this.state === 'inactive') {
+          return;
+        }
+
+        this.state = 'inactive';
+        const data = new Blob(['mock-audio'], { type: this.mimeType });
+        const dataEvent = new Event('dataavailable') as Event & { data: Blob };
+        Object.defineProperty(dataEvent, 'data', { value: data });
+        this.dispatchEvent(dataEvent);
+        this.dispatchEvent(new Event('stop'));
+      }
+    }
+
+    Object.defineProperty(window, 'MediaRecorder', {
+      configurable: true,
+      value: MockMediaRecorder,
+    });
+
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: {
+        getUserMedia: async () =>
+          ({
+            getTracks: () => [{ stop() {} }],
+          }) as unknown as MediaStream,
+      },
+    });
+  });
 }
 
 async function expectNoHorizontalOverflow(page: Page) {
@@ -135,6 +242,7 @@ async function createAndSavePhotoPhrase(page: Page) {
 }
 
 test.beforeEach(async ({ page }) => {
+  await installMockSpeech(page);
   await clearSavedPhrases(page);
 });
 
@@ -144,6 +252,10 @@ test('Flow A: 使う画面から大きく表示して戻れる', async ({ page }
   await expect(page.getByText('好久不見～')).toBeVisible();
   await expectLogoHealthy(page);
   await expectBottomNavVisible(page);
+  await expectPageChromeHealthy(page);
+
+  await page.getByRole('button', { name: '聞く' }).first().click();
+  await page.getByRole('button', { name: 'ゆっくり' }).first().click();
   await expectPageChromeHealthy(page);
 
   await page.getByRole('button', { name: '大きく表示' }).first().click();
@@ -160,6 +272,8 @@ test('Flow A: 使う画面から大きく表示して戻れる', async ({ page }
 
 test('Flow B: 作るから保存して保存画面で検索できる', async ({ page }) => {
   await createAndSavePhotoPhrase(page);
+  await page.getByRole('button', { name: '聞く' }).first().click();
+  await page.getByRole('button', { name: 'ゆっくり' }).first().click();
   await expectPageChromeHealthy(page);
 
   await page.goto('/saved');
@@ -186,10 +300,20 @@ test('Flow C: 保存フレーズを大きく表示して練習へ進める', asy
 });
 
 test('Flow D: 練習で発音チェックモックから苦手に保存できる', async ({ page }) => {
+  await installMockRecorder(page);
   await page.goto('/practice');
-  await page.getByLabel('録音して発音チェック').click();
+  await expect(page.getByText('録音待機')).toBeVisible();
+  await page.getByRole('button', { name: '聞く', exact: true }).click();
+  await page.getByRole('button', { name: 'ゆっくり聞く' }).click();
+  await page.getByRole('button', { name: '録音する' }).click();
+  await expect(page.getByText('録音中')).toBeVisible();
+  await page.getByRole('button', { name: '停止', exact: true }).click();
+  await expect(page.getByText('録音できました')).toBeVisible();
+  await expect(page.getByRole('button', { name: '自分の音声を聞く' })).toBeVisible();
+  await page.getByRole('button', { name: '発音チェックへ' }).click();
   await expect(page.getByText('あなたの発音チェック結果')).toBeVisible();
   await expect(page.getByText('通じやすさ', { exact: true })).toBeVisible();
+  await expect(page.getByText('発音チェック結果は現在、開発中の仮表示です。')).toBeVisible();
 
   await page.getByRole('button', { name: '苦手に保存' }).click();
   await expect(page.getByText('苦手に保存しました')).toBeVisible();
@@ -232,6 +356,9 @@ test('390px layout smoke: required pages keep nav, logo, buttons, and width heal
     await expectLogoHealthy(page);
     await expectBottomNavVisible(page);
     await expectNoForbiddenText(page);
+    if (path === '/practice') {
+      await expect(page.getByText('録音待機')).toBeVisible();
+    }
     await expectPageChromeHealthy(page);
   }
 

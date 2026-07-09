@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Bookmark,
   BookmarkCheck,
@@ -9,6 +10,8 @@ import {
   Volume2,
 } from 'lucide-react';
 import type { Phrase } from '../lib/conversation/types';
+import { speechService } from '../lib/speech/speechService';
+import type { SpeechPlaybackSpeed } from '../lib/speech/types';
 import { PrimaryButton } from './PrimaryButton';
 
 type PhraseCardProps = {
@@ -32,6 +35,30 @@ export function PhraseCard({
   onSave,
   onFavorite,
 }: PhraseCardProps) {
+  const [playingSpeed, setPlayingSpeed] = useState<SpeechPlaybackSpeed | null>(null);
+  const [speechNotice, setSpeechNotice] = useState('');
+
+  function playPhrase(speed: SpeechPlaybackSpeed) {
+    setSpeechNotice('');
+
+    const playback = speechService.speak(phrase.resultText, {
+      speed,
+      callbacks: {
+        onStart: () => setPlayingSpeed(speed),
+        onEnd: () => setPlayingSpeed(null),
+        onError: (message) => {
+          setPlayingSpeed(null);
+          setSpeechNotice(message);
+        },
+      },
+    });
+
+    if (!playback.ok) {
+      setPlayingSpeed(null);
+      setSpeechNotice(playback.message);
+    }
+  }
+
   if (compact) {
     return (
       <article className="grid grid-cols-[1fr_36px] items-center gap-3 border-b border-[#edf1f7] py-3 last:border-b-0">
@@ -93,11 +120,19 @@ export function PhraseCard({
         ) : null}
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2">
-        <PrimaryButton icon={<Volume2 aria-hidden="true" size={18} />} variant="danger">
-          聞く
+        <PrimaryButton
+          icon={<Volume2 aria-hidden="true" size={18} />}
+          variant="danger"
+          onClick={() => playPhrase('normal')}
+        >
+          {playingSpeed === 'normal' ? '再生中' : '聞く'}
         </PrimaryButton>
-        <PrimaryButton icon={<Clock3 aria-hidden="true" size={18} />} variant="soft">
-          ゆっくり
+        <PrimaryButton
+          icon={<Clock3 aria-hidden="true" size={18} />}
+          variant="soft"
+          onClick={() => playPhrase('slow')}
+        >
+          {playingSpeed === 'slow' ? 'ゆっくり再生中' : 'ゆっくり'}
         </PrimaryButton>
         <PrimaryButton
           icon={<Maximize2 aria-hidden="true" size={18} />}
@@ -114,6 +149,11 @@ export function PhraseCard({
           練習する
         </PrimaryButton>
       </div>
+      {speechNotice ? (
+        <p className="mt-2 rounded-[12px] bg-white/75 px-3 py-2 text-xs font-bold leading-relaxed text-[#b42318]">
+          {speechNotice}
+        </p>
+      ) : null}
       {onSave ? (
         <PrimaryButton
           className="mt-3"

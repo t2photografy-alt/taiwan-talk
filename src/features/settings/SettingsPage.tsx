@@ -40,7 +40,8 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
 
         <article className="rounded-[18px] border border-[#d9e1ee] bg-[#f9fbff] p-4">
           <p className="text-sm font-bold leading-relaxed text-[#667085]">
-            現在は開発中のため、一部の生成・音声・発音チェックは仮の表示です。
+            現在は開発中のため、AI生成と発音チェック結果は仮の表示です。
+            音声再生と録音はブラウザ機能を使った土台実装です。
           </p>
         </article>
       </section>

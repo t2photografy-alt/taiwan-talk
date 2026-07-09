@@ -23,7 +23,7 @@ export default defineConfig({
     ? {}
     : {
         webServer: {
-          command: 'npm run dev -- --host 127.0.0.1 --port 5173',
+          command: 'node ./node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5173',
           url: baseURL,
           reuseExistingServer: true,
           timeout: 30_000,

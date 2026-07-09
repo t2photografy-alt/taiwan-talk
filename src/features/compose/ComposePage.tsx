@@ -10,6 +10,8 @@ import type {
   LanguageDirection,
   PhraseCategory,
 } from '../../lib/conversation/types';
+import { speechService } from '../../lib/speech/speechService';
+import type { SpeechPlaybackSpeed } from '../../lib/speech/types';
 
 type ComposePageProps = {
   onNavigate: (path: string) => void;
@@ -34,6 +36,8 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
   const [result, setResult] = useState<ConversationResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [savedNotice, setSavedNotice] = useState('');
+  const [playingSpeed, setPlayingSpeed] = useState<SpeechPlaybackSpeed | null>(null);
+  const [speechNotice, setSpeechNotice] = useState('');
 
   const resultWithCategory = useMemo(
     () => (result ? { ...result, category } : null),
@@ -43,6 +47,7 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
   async function generate() {
     setIsLoading(true);
     setSavedNotice('');
+    setSpeechNotice('');
     const nextResult = await conversationService.generate({
       sourceText,
       direction,
@@ -64,6 +69,31 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
 
     await onSaveResult(resultWithCategory);
     setSavedNotice('保存しました');
+  }
+
+  function playResult(speed: SpeechPlaybackSpeed) {
+    if (!resultWithCategory) {
+      return;
+    }
+
+    setSpeechNotice('');
+
+    const playback = speechService.speak(resultWithCategory.resultText, {
+      speed,
+      callbacks: {
+        onStart: () => setPlayingSpeed(speed),
+        onEnd: () => setPlayingSpeed(null),
+        onError: (message) => {
+          setPlayingSpeed(null);
+          setSpeechNotice(message);
+        },
+      },
+    });
+
+    if (!playback.ok) {
+      setPlayingSpeed(null);
+      setSpeechNotice(playback.message);
+    }
   }
 
   return (
@@ -153,11 +183,19 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
             {resultWithCategory.sourceText}
           </p>
           <div className="mt-4 grid grid-cols-2 gap-2">
-            <PrimaryButton icon={<Volume2 aria-hidden="true" size={18} />} variant="danger">
-              聞く
+            <PrimaryButton
+              icon={<Volume2 aria-hidden="true" size={18} />}
+              variant="danger"
+              onClick={() => playResult('normal')}
+            >
+              {playingSpeed === 'normal' ? '再生中' : '聞く'}
             </PrimaryButton>
-            <PrimaryButton icon={<Play aria-hidden="true" size={18} />} variant="soft">
-              ゆっくり
+            <PrimaryButton
+              icon={<Play aria-hidden="true" size={18} />}
+              variant="soft"
+              onClick={() => playResult('slow')}
+            >
+              {playingSpeed === 'slow' ? 'ゆっくり再生中' : 'ゆっくり'}
             </PrimaryButton>
             <PrimaryButton
               className="col-span-2"
@@ -168,6 +206,11 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
               練習する
             </PrimaryButton>
           </div>
+          {speechNotice ? (
+            <p className="mt-2 rounded-[12px] bg-white/75 px-3 py-2 text-xs font-bold leading-relaxed text-[#b42318]">
+              {speechNotice}
+            </p>
+          ) : null}
           <div className="mt-3 grid grid-cols-2 gap-2">
             <PrimaryButton
               fullWidth

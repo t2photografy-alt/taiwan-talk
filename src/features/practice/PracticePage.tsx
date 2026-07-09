@@ -1,10 +1,24 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Bookmark, CircleHelp, Clock3, Maximize2, Mic2, Play, RotateCcw, Volume2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Bookmark,
+  CircleHelp,
+  Clock3,
+  Maximize2,
+  Mic2,
+  Play,
+  RotateCcw,
+  Square,
+  Volume2,
+} from 'lucide-react';
 import { Header } from '../../components/Header';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { presetPhrases } from '../../data/presets';
 import type { Phrase, PracticeResult } from '../../lib/conversation/types';
 import { practiceService } from '../../lib/practice/practiceService';
+import { recorderService } from '../../lib/recorder/recorderService';
+import type { RecordedAudio, RecorderSession } from '../../lib/recorder/types';
+import { speechService } from '../../lib/speech/speechService';
+import type { SpeechPlaybackSpeed } from '../../lib/speech/types';
 
 type PracticePageProps = {
   savedPhrases: Phrase[];
@@ -15,18 +29,38 @@ type PracticePageProps = {
   onMarkPracticed: (phraseId: string) => Promise<void>;
 };
 
-const stepLabels = ['例文を聞く', '自分の発音を録音', '下次再一起玩吧', '謝謝你〜！'];
+type RecordingUiState = 'idle' | 'recording' | 'recorded' | 'checking' | 'error';
 
-function Waveform() {
+const stepLabels = ['例文を聞く', '録音して聞き返す', '仮チェック', '苦手を保存'];
+
+function Waveform({ active = false }: { active?: boolean }) {
   const heights = [14, 22, 34, 52, 30, 18, 42, 26, 16, 36, 20];
 
   return (
     <div className="flex h-16 items-center justify-center gap-1.5" aria-hidden="true">
       {heights.map((height, index) => (
-        <span key={`${height}-${index}`} className="wave-bar" style={{ height }} />
+        <span
+          key={`${height}-${index}`}
+          className={['wave-bar', active ? 'animate-pulse' : ''].join(' ')}
+          style={{ height }}
+        />
       ))}
     </div>
   );
+}
+
+function formatSeconds(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  return `${minutes}:${rest.toString().padStart(2, '0')}`;
+}
+
+function errorMessage(error: unknown) {
+  if (typeof error === 'object' && error && 'message' in error) {
+    return String((error as { message: unknown }).message);
+  }
+
+  return 'マイクを使えませんでした。ブラウザの許可設定を確認してください。';
 }
 
 export function PracticePage({
@@ -44,23 +78,158 @@ export function PracticePage({
     allPhrases[phraseIndex % allPhrases.length] ??
     presetPhrases[0];
   const [result, setResult] = useState<PracticeResult | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
+  const [recordingState, setRecordingState] = useState<RecordingUiState>('idle');
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [recordedAudio, setRecordedAudio] = useState<RecordedAudio | null>(null);
+  const [recorderNotice, setRecorderNotice] = useState('');
   const [notice, setNotice] = useState('');
+  const [playingSpeed, setPlayingSpeed] = useState<SpeechPlaybackSpeed | null>(null);
+  const [speechNotice, setSpeechNotice] = useState('');
+  const recorderSessionRef = useRef<RecorderSession | null>(null);
+  const recordedAudioRef = useRef<RecordedAudio | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  async function runCheck() {
-    setIsRecording(true);
+  useEffect(() => {
+    recordedAudioRef.current = recordedAudio;
+  }, [recordedAudio]);
+
+  useEffect(() => {
+    if (recordingState !== 'recording') {
+      return;
+    }
+
+    const updateSeconds = () => {
+      const startedAt = recorderSessionRef.current?.startedAt ?? Date.now();
+      setRecordingSeconds(Math.floor((Date.now() - startedAt) / 1000));
+    };
+
+    updateSeconds();
+    const timer = window.setInterval(updateSeconds, 250);
+    return () => window.clearInterval(timer);
+  }, [recordingState]);
+
+  useEffect(
+    () => () => {
+      recorderSessionRef.current?.cancel();
+      recorderService.releaseRecording(recordedAudioRef.current);
+      speechService.stop();
+    },
+    [],
+  );
+
+  function clearRecordedAudio() {
+    if (recordedAudioRef.current) {
+      recorderService.releaseRecording(recordedAudioRef.current);
+    }
+
+    recordedAudioRef.current = null;
+    setRecordedAudio(null);
+  }
+
+  function resetRecording() {
+    recorderSessionRef.current?.cancel();
+    recorderSessionRef.current = null;
+    clearRecordedAudio();
+    setRecordingSeconds(0);
+    setRecordingState('idle');
+    setRecorderNotice('');
+    setResult(null);
+  }
+
+  function playSelectedPhrase(speed: SpeechPlaybackSpeed) {
+    setSpeechNotice('');
+
+    const playback = speechService.speak(selectedPhrase.resultText, {
+      speed,
+      callbacks: {
+        onStart: () => setPlayingSpeed(speed),
+        onEnd: () => setPlayingSpeed(null),
+        onError: (message) => {
+          setPlayingSpeed(null);
+          setSpeechNotice(message);
+        },
+      },
+    });
+
+    if (!playback.ok) {
+      setPlayingSpeed(null);
+      setSpeechNotice(playback.message);
+    }
+  }
+
+  async function startRecording() {
+    speechService.stop();
+    setPlayingSpeed(null);
+    setSpeechNotice('');
+    setNotice('');
+    setResult(null);
+    setRecorderNotice('');
+    clearRecordedAudio();
+
+    const started = await recorderService.startRecording();
+
+    if (!started.ok) {
+      setRecordingState('error');
+      setRecorderNotice(started.error.message);
+      return;
+    }
+
+    recorderSessionRef.current = started.session;
+    setRecordingSeconds(0);
+    setRecordingState('recording');
+  }
+
+  async function stopRecording() {
+    const session = recorderSessionRef.current;
+
+    if (!session) {
+      return;
+    }
+
+    try {
+      const recording = await session.stop();
+      recorderSessionRef.current = null;
+      recordedAudioRef.current = recording;
+      setRecordedAudio(recording);
+      setRecordingState('recorded');
+      setRecorderNotice('録音できました');
+    } catch (error) {
+      recorderSessionRef.current = null;
+      setRecordingState('error');
+      setRecorderNotice(errorMessage(error));
+    }
+  }
+
+  async function playRecordedAudio() {
+    if (!audioRef.current) {
+      return;
+    }
+
+    try {
+      audioRef.current.currentTime = 0;
+      await audioRef.current.play();
+    } catch {
+      setRecorderNotice('録音音声を再生できませんでした。端末の設定を確認してください。');
+    }
+  }
+
+  async function runMockCheck() {
+    if (!recordedAudio) {
+      setRecorderNotice('録音してから発音チェックへ進めます。');
+      return;
+    }
+
+    setRecordingState('checking');
     setNotice('');
     const nextResult = await practiceService.checkPronunciation(selectedPhrase);
     await onMarkPracticed(selectedPhrase.id);
+
     window.setTimeout(() => {
       setResult(nextResult);
-      setIsRecording(false);
+      setRecordingState('recorded');
+      setRecorderNotice('');
     }, 420);
   }
-
-  useEffect(() => {
-    void practiceService.checkPronunciation(selectedPhrase).then(setResult);
-  }, [selectedPhrase.id]);
 
   async function saveWeakPhrase() {
     await onSavePhrase({
@@ -69,6 +238,12 @@ export function PracticePage({
       note: selectedPhrase.note ?? '苦手に保存したフレーズです。',
     });
     setNotice('苦手に保存しました');
+  }
+
+  function goNextPhrase() {
+    resetRecording();
+    setPhraseIndex((current) => current + 1);
+    setNotice('');
   }
 
   return (
@@ -125,33 +300,112 @@ export function PracticePage({
           ))}
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <PrimaryButton icon={<Volume2 aria-hidden="true" size={18} />} variant="blue">
-            聞く
+          <PrimaryButton
+            icon={<Volume2 aria-hidden="true" size={18} />}
+            variant="blue"
+            onClick={() => playSelectedPhrase('normal')}
+          >
+            {playingSpeed === 'normal' ? '再生中' : '聞く'}
           </PrimaryButton>
-          <PrimaryButton icon={<Clock3 aria-hidden="true" size={18} />} variant="soft">
-            ゆっくり聞く
+          <PrimaryButton
+            icon={<Clock3 aria-hidden="true" size={18} />}
+            variant="soft"
+            onClick={() => playSelectedPhrase('slow')}
+          >
+            {playingSpeed === 'slow' ? 'ゆっくり再生中' : 'ゆっくり聞く'}
           </PrimaryButton>
         </div>
+        {speechNotice ? (
+          <p className="mt-2 rounded-[12px] bg-[#fff7f7] px-3 py-2 text-xs font-bold leading-relaxed text-[#b42318]">
+            {speechNotice}
+          </p>
+        ) : null}
       </section>
 
       <section className="glass-card mb-4 rounded-[22px] p-4 text-center">
         <p className="text-sm font-black text-[#141821]">押して話す</p>
+        <p className="mt-1 text-xs font-bold text-[#667085]">
+          {recordingState === 'recording'
+            ? '録音中'
+            : recordingState === 'recorded'
+              ? '録音済み'
+              : recordingState === 'checking'
+                ? '仮チェック中'
+                : '録音待機'}
+        </p>
         <div className="mt-2 grid grid-cols-[1fr_92px_1fr] items-center gap-3">
-          <Waveform />
+          <Waveform active={recordingState === 'recording'} />
           <button
-            aria-label="録音して発音チェック"
+            aria-label={recordingState === 'recording' ? '録音を停止' : '録音する'}
             className={[
               'grid h-[92px] w-[92px] place-items-center rounded-full text-white shadow-[0_16px_30px_rgba(239,31,36,0.28)] transition focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-200',
-              isRecording ? 'bg-[#b91c1c]' : 'bg-[var(--brand-red)]',
+              recordingState === 'recording' ? 'bg-[#b91c1c]' : 'bg-[var(--brand-red)]',
             ].join(' ')}
             type="button"
-            onClick={() => void runCheck()}
+            onClick={() => {
+              if (recordingState === 'recording') {
+                void stopRecording();
+                return;
+              }
+              void startRecording();
+            }}
+            disabled={recordingState === 'checking'}
           >
-            <Mic2 aria-hidden="true" size={44} strokeWidth={2.6} />
+            {recordingState === 'recording' ? (
+              <Square aria-hidden="true" fill="currentColor" size={36} strokeWidth={2.6} />
+            ) : (
+              <Mic2 aria-hidden="true" size={44} strokeWidth={2.6} />
+            )}
           </button>
-          <Waveform />
+          <Waveform active={recordingState === 'recording'} />
         </div>
-        <p className="mt-2 text-sm font-bold text-[#344054]">{isRecording ? '0:03 / 0:06' : '0:03 / 0:06'}</p>
+        <p className="mt-2 text-sm font-bold text-[#344054]">{formatSeconds(recordingSeconds)}</p>
+
+        {recordingState === 'recording' ? (
+          <PrimaryButton
+            className="mt-3"
+            fullWidth
+            icon={<Square aria-hidden="true" fill="currentColor" size={16} />}
+            variant="danger"
+            onClick={() => void stopRecording()}
+          >
+            停止
+          </PrimaryButton>
+        ) : null}
+
+        {recordedAudio ? (
+          <div className="mt-3 space-y-2">
+            <audio ref={audioRef} src={recordedAudio.url} />
+            <div className="grid grid-cols-2 gap-2">
+              <PrimaryButton icon={<Play aria-hidden="true" size={18} />} variant="soft" onClick={playRecordedAudio}>
+                自分の音声を聞く
+              </PrimaryButton>
+              <PrimaryButton icon={<RotateCcw aria-hidden="true" size={18} />} variant="soft" onClick={resetRecording}>
+                もう一回録音
+              </PrimaryButton>
+              <PrimaryButton
+                className="col-span-2"
+                fullWidth
+                icon={<Mic2 aria-hidden="true" size={18} />}
+                onClick={() => void runMockCheck()}
+                disabled={recordingState === 'checking'}
+              >
+                {recordingState === 'checking' ? '確認しています...' : '発音チェックへ'}
+              </PrimaryButton>
+            </div>
+          </div>
+        ) : null}
+
+        {recorderNotice ? (
+          <p
+            className={[
+              'mt-3 rounded-[12px] px-3 py-2 text-xs font-bold leading-relaxed',
+              recordingState === 'error' ? 'bg-[#fff7f7] text-[#b42318]' : 'bg-[#f3f6fb] text-[#344054]',
+            ].join(' ')}
+          >
+            {recorderNotice}
+          </p>
+        ) : null}
       </section>
 
       {result ? (
@@ -182,6 +436,9 @@ export function PracticePage({
               </div>
             </dl>
           </div>
+          <p className="mt-3 rounded-[12px] bg-[#f3f6fb] px-3 py-2 text-xs font-bold leading-relaxed text-[#667085]">
+            発音チェック結果は現在、開発中の仮表示です。
+          </p>
         </section>
       ) : null}
 
@@ -195,13 +452,14 @@ export function PracticePage({
       <section className="glass-card mb-4 rounded-[18px] p-3">
         <div className="grid grid-cols-[1fr_42px] items-center gap-2">
           <div>
-            <p className="text-xs font-black text-[#0f766e]">暗記練り練習</p>
+            <p className="text-xs font-black text-[#0f766e]">暗記練習</p>
             <p className="mt-1 text-lg font-black text-[#141821]">{selectedPhrase.resultText.replace('\n', ' ')}</p>
           </div>
           <button
-            aria-label="再生"
+            aria-label="暗記練習を再生"
             className="grid h-11 w-11 place-items-center rounded-full bg-[#eef6ff] text-[var(--brand-blue)]"
             type="button"
+            onClick={() => playSelectedPhrase('normal')}
           >
             <Play aria-hidden="true" fill="currentColor" size={22} />
           </button>
@@ -209,20 +467,10 @@ export function PracticePage({
       </section>
 
       <div className="grid grid-cols-2 gap-2">
-        <PrimaryButton
-          icon={<RotateCcw aria-hidden="true" size={18} />}
-          variant="soft"
-          onClick={() => void runCheck()}
-        >
-          もう一回
+        <PrimaryButton icon={<RotateCcw aria-hidden="true" size={18} />} variant="soft" onClick={resetRecording}>
+          もう一回録音
         </PrimaryButton>
-        <PrimaryButton
-          variant="blue"
-          onClick={() => {
-            setPhraseIndex((current) => current + 1);
-            setNotice('');
-          }}
-        >
+        <PrimaryButton variant="blue" onClick={goNextPhrase}>
           次のフレーズ
         </PrimaryButton>
         <PrimaryButton

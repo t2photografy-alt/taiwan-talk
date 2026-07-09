@@ -11,6 +11,12 @@ Taiwan Talk is a Taiwan Mandarin and Japanese conversation support app for quick
 - `npm run qa:screenshots`: passed
 - Production QA: `BASE_URL=https://taiwan-talk.vercel.app npm run qa:flow` passed with 7 tests
 
+## Phase 2A Status
+
+- Audio playback: browser `speechSynthesis` foundation added
+- Recording: browser `MediaRecorder` recording foundation added
+- Pronunciation analysis: still mocked after recording
+
 ## Tech Stack
 
 - React
@@ -77,10 +83,10 @@ vercel --prod
 
 ## Current Mock Areas
 
-The Phase 1 app intentionally keeps these areas mocked or pending final verification:
+The app intentionally keeps these areas mocked or pending final verification:
 
-- AI generation
-- Audio playback
-- Recording
-- Pronunciation analysis
-- Native review of Taiwan Mandarin wording
+- AI generation: still mocked
+- Pronunciation analysis: still mocked
+- Taiwan Mandarin wording: marked with `needsNativeCheck`
+- Audio playback: implemented with browser `speechSynthesis`
+- Recording: implemented as a browser `MediaRecorder` foundation
