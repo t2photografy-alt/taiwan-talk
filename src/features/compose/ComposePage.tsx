@@ -207,6 +207,9 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
               {speechPlayback.error}
             </p>
           ) : null}
+          <p className="mt-3 rounded-[12px] bg-white/70 px-3 py-2 text-xs font-bold leading-relaxed text-[#667085]">
+            AI生成結果は確認前の表現です。必要に応じて相手や場面に合わせて調整してください。
+          </p>
           <div className="mt-3 grid grid-cols-2 gap-2">
             <PrimaryButton
               fullWidth

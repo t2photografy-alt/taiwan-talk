@@ -1,11 +1,4 @@
-import type { Phrase } from '../lib/conversation/types';
-
-export type PhraseReviewStatus =
-  | 'draft'
-  | 'needs-native-check'
-  | 'reviewed'
-  | 'approved'
-  | 'rejected';
+import type { Phrase, PhraseReviewStatus } from '../lib/conversation/types';
 
 export type PresetPhrase = Phrase & {
   needsNativeCheck: boolean;

@@ -1,4 +1,5 @@
-import type { PresetPhrase, PhraseReviewStatus } from '../../data/presets';
+import type { PresetPhrase } from '../../data/presets';
+import type { PhraseReviewStatus } from '../conversation/types';
 
 export type PhraseReviewSummary = {
   total: number;

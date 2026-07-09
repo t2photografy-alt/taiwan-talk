@@ -328,8 +328,8 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
 
         <article className="rounded-[18px] border border-[#d9e1ee] bg-[#f9fbff] p-4">
           <p className="text-sm font-bold leading-relaxed text-[#667085]">
-            現在は開発中のため、AI生成と発音チェック結果は仮の表示です。
-            音声再生と録音はブラウザ機能を使った土台実装です。
+            現在は開発中のため、AI生成結果と発音チェック結果は確認前の表示です。
+            API key未設定時の生成、音声再生、録音はブラウザ機能や仮実装を使います。
             台湾華語の表現は、今後ネイティブ確認を入れて調整予定です。
           </p>
         </article>

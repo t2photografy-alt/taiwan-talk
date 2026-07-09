@@ -47,6 +47,14 @@ Taiwan Talk is a Taiwan Mandarin and Japanese conversation support app for quick
 - Voice type settings were added: auto / female-leaning / male-leaning
 - Voice selection depends on the device's Web Speech API voices
 
+## Phase 3A Status
+
+- AI generation API foundation added with Vercel Functions
+- The frontend calls `/api/conversation/generate` and never holds the OpenAI API key
+- OpenAI API credentials are server-side environment variables only
+- Missing or disabled API configuration falls back to the existing mock generation path
+- Generated phrases are still marked as `needsNativeCheck` / `needs-native-check`
+
 ## Tech Stack
 
 - React
@@ -113,6 +121,20 @@ vercel
 vercel --prod
 ```
 
+### AI generation environment variables
+
+Set these in Vercel Project Settings → Environment Variables. Use Production for the public app, and optionally Preview / Development for test deployments.
+
+```txt
+OPENAI_API_KEY=
+OPENAI_MODEL=
+AI_GENERATION_ENABLED=true
+```
+
+- `OPENAI_API_KEY` must never be committed or exposed as a `VITE_` variable.
+- `OPENAI_MODEL` is optional; the server function uses a code default when it is empty.
+- If `AI_GENERATION_ENABLED` is not `true` or the API key is missing, the app falls back to mock generation.
+
 ## Current Mock Areas
 
 The app intentionally keeps these areas mocked or pending final verification:
@@ -120,6 +142,7 @@ The app intentionally keeps these areas mocked or pending final verification:
 - AI generation: still mocked
 - Pronunciation analysis: still mocked
 - Taiwan Mandarin wording: marked with `needsNativeCheck`
+- AI generation: Vercel API foundation exists, but quality is still under review and falls back to mock when disabled
 - Audio playback: implemented with browser `speechSynthesis`
 - Recording: implemented as a browser `MediaRecorder` foundation
 - Android/PWA support: browser and device dependent

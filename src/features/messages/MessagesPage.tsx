@@ -178,6 +178,9 @@ export function MessagesPage({
               {t('cta.largeDisplay')}
             </PrimaryButton>
           </div>
+          <p className="mt-3 rounded-[12px] bg-white/70 px-3 py-2 text-xs font-bold leading-relaxed text-[#667085]">
+            AI生成結果は確認前の表現です。必要に応じて相手や場面に合わせて調整してください。
+          </p>
           {notice ? <p className="mt-2 text-center text-sm font-black text-[var(--brand-red)]">{notice}</p> : null}
         </section>
       ) : null}

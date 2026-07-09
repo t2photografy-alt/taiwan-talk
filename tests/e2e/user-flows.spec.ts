@@ -253,6 +253,7 @@ async function createAndSavePhotoPhrase(page: Page) {
   await page.getByLabel(/話したいこと/).fill('また写真撮らせてください！');
   await page.getByRole('button', { name: '自然な言い方にする' }).click();
   await expect(page.getByText('我們一起拍照吧！')).toBeVisible();
+  await expect(page.getByText('AI生成結果は確認前の表現です。')).toBeVisible();
   await page.getByRole('button', { name: '保存する' }).click();
   await expect(page.getByText('保存しました')).toBeVisible();
 }
@@ -353,6 +354,7 @@ test('Flow E: メッセージ意味確認から返信保存と大きく表示へ
 
   await page.getByRole('button', { name: 'また会いたい' }).click();
   await expect(page.getByText('我還想再見你！')).toBeVisible();
+  await expect(page.getByText('AI生成結果は確認前の表現です。')).toBeVisible();
   await page.getByRole('button', { name: '保存' }).first().click();
   await expect(page.getByText('返信候補を保存しました')).toBeVisible();
 

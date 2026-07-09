@@ -2,6 +2,13 @@ export type LanguageDirection = 'ja-to-zh-TW' | 'zh-TW-to-ja';
 
 export type Tone = 'friendly' | 'polite' | 'casual' | 'event' | 'dm';
 
+export type PhraseReviewStatus =
+  | 'draft'
+  | 'needs-native-check'
+  | 'reviewed'
+  | 'approved'
+  | 'rejected';
+
 export type PhraseCategory =
   | 'greeting'
   | 'thanks'
@@ -27,6 +34,8 @@ export type Phrase = {
   nuance?: string;
   readabilityScore?: number;
   needsNativeCheck?: boolean;
+  reviewStatus?: PhraseReviewStatus;
+  naturalnessNote?: string;
   createdAt: string;
   updatedAt: string;
   isFavorite: boolean;
@@ -62,6 +71,9 @@ export type ConversationResult = {
     note?: string;
   }>;
   readabilityScore?: number;
+  needsNativeCheck?: boolean;
+  reviewStatus?: PhraseReviewStatus;
+  naturalnessNote?: string;
 };
 
 export type ConversationRequest = {

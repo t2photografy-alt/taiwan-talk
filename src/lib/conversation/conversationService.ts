@@ -1,9 +1,15 @@
 import { createId } from '../utils/id';
 import { nowIso } from '../utils/date';
+import type {
+  GeneratedConversationResult,
+  GenerateConversationRequest,
+  GenerateConversationResponse,
+} from './apiTypes';
 import { mockConversationProvider, type ConversationProvider } from './mockConversationProvider';
 import type {
   ConversationRequest,
   ConversationResult,
+  LanguageCode,
   MessageReplyRequest,
   Phrase,
 } from './types';
@@ -15,18 +21,111 @@ export type ConversationService = {
   toPhrase(result: ConversationResult, overrides?: Partial<Phrase>): Phrase;
 };
 
+function withNativeCheck(result: ConversationResult): GeneratedConversationResult {
+  return {
+    ...result,
+    needsNativeCheck: true,
+    reviewStatus: 'needs-native-check',
+    naturalnessNote:
+      result.naturalnessNote ?? 'AI生成または仮生成のため、台湾華語表現はネイティブ確認前です。',
+  };
+}
+
+function directionToLanguages(direction: ConversationRequest['direction']): {
+  sourceLanguage: LanguageCode;
+  targetLanguage: LanguageCode;
+} {
+  return direction === 'ja-to-zh-TW'
+    ? { sourceLanguage: 'ja', targetLanguage: 'zh-TW' }
+    : { sourceLanguage: 'zh-TW', targetLanguage: 'ja' };
+}
+
+function buildGenerateApiRequest(request: ConversationRequest): GenerateConversationRequest {
+  const languages = directionToLanguages(request.direction);
+
+  return {
+    mode: 'compose',
+    sourceText: request.sourceText,
+    sourceLanguage: languages.sourceLanguage,
+    targetLanguage: languages.targetLanguage,
+    tone: request.tone,
+    category: request.category,
+    purpose: 'スマホ画面で相手に見せやすい短い会話表現を作る',
+    relationship: request.tone === 'polite' ? '少し丁寧な距離感' : '友達やイベントで自然に話せる距離感',
+  };
+}
+
+function buildReplyApiRequest(request: MessageReplyRequest): GenerateConversationRequest {
+  return {
+    mode: 'message-reply',
+    sourceText: request.incomingText,
+    sourceLanguage: 'zh-TW',
+    targetLanguage: 'zh-TW',
+    tone: request.tone,
+    category: 'dm',
+    purpose: '相手から届いた台湾華語メッセージへの自然な返信候補を作る',
+    relationship: 'DMやイベント後の友達寄りの距離感',
+    replyIntent: request.intent,
+  };
+}
+
+function isApiResponse(value: unknown): value is GenerateConversationResponse {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'ok' in value &&
+    (value as { ok: unknown }).ok === true &&
+    typeof (value as { result?: { resultText?: unknown } }).result?.resultText === 'string'
+  );
+}
+
+async function requestApiGeneration(request: GenerateConversationRequest): Promise<GeneratedConversationResult> {
+  const response = await fetch('/api/conversation/generate', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request),
+  });
+
+  const payload = (await response.json().catch(() => null)) as unknown;
+
+  if (response.ok && isApiResponse(payload)) {
+    return withNativeCheck(payload.result);
+  }
+
+  if (
+    typeof payload === 'object' &&
+    payload !== null &&
+    'fallback' in payload &&
+    typeof (payload as { fallback?: { resultText?: unknown } }).fallback?.resultText === 'string'
+  ) {
+    return withNativeCheck((payload as { fallback: ConversationResult }).fallback);
+  }
+
+  throw new Error('AI generation API unavailable');
+}
+
 export function createConversationService(
   provider: ConversationProvider = mockConversationProvider,
 ): ConversationService {
   return {
-    generate(request) {
-      return provider.generate(request);
+    async generate(request) {
+      try {
+        return await requestApiGeneration(buildGenerateApiRequest(request));
+      } catch {
+        return withNativeCheck(await provider.generate(request));
+      }
     },
     analyzeMessage(text) {
       return provider.analyzeMessage(text);
     },
-    createReply(request) {
-      return provider.createReply(request);
+    async createReply(request) {
+      try {
+        return await requestApiGeneration(buildReplyApiRequest(request));
+      } catch {
+        return withNativeCheck(await provider.createReply(request));
+      }
     },
     toPhrase(result, overrides = {}) {
       const timestamp = nowIso();
@@ -42,6 +141,10 @@ export function createConversationService(
         category: result.category,
         nuance: result.nuance,
         readabilityScore: result.readabilityScore,
+        needsNativeCheck: result.needsNativeCheck ?? true,
+        reviewStatus: result.reviewStatus ?? 'needs-native-check',
+        naturalnessNote:
+          result.naturalnessNote ?? 'AI生成または仮生成のため、台湾華語表現はネイティブ確認前です。',
         createdAt: timestamp,
         updatedAt: timestamp,
         isFavorite: false,
