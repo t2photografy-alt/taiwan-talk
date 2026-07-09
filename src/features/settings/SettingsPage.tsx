@@ -1,12 +1,194 @@
-import { ShieldCheck, Sparkles } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Mic2, RefreshCw, ShieldCheck, Smartphone, Sparkles, Square, Volume2 } from 'lucide-react';
 import { Header } from '../../components/Header';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { deviceCapabilities } from '../../lib/device/deviceCapabilities';
+import type { DeviceCapabilitySnapshot } from '../../lib/device/types';
+import { recorderService } from '../../lib/recorder/recorderService';
+import type { RecordedAudio, RecorderSession } from '../../lib/recorder/types';
+import { speechService } from '../../lib/speech/speechService';
 
 type SettingsPageProps = {
   onNavigate: (path: string) => void;
 };
 
+const SPEECH_TEST_TEXT = '你好，這是 Taiwan Talk 的音聲測試。';
+
+function capabilityLabel(isSupported: boolean) {
+  return isSupported ? '対応' : '未対応';
+}
+
+function supportTone(isSupported: boolean) {
+  return isSupported ? 'text-emerald-700' : 'text-[#b42318]';
+}
+
+function microphoneLabel(capabilities: DeviceCapabilitySnapshot) {
+  if (capabilities.microphonePermission === 'granted') {
+    return '確認済み';
+  }
+
+  if (capabilities.microphonePermission === 'unavailable') {
+    return '使えない可能性';
+  }
+
+  return '許可が必要';
+}
+
+function statusLabel(capabilities: DeviceCapabilitySnapshot) {
+  return [
+    {
+      label: '音声再生',
+      value: capabilityLabel(capabilities.speechSynthesis === 'supported'),
+      tone: supportTone(capabilities.speechSynthesis === 'supported'),
+    },
+    {
+      label: '録音',
+      value: capabilityLabel(capabilities.recording === 'supported'),
+      tone: supportTone(capabilities.recording === 'supported'),
+    },
+    {
+      label: 'マイク',
+      value: microphoneLabel(capabilities),
+      tone: capabilities.microphonePermission === 'unavailable' ? 'text-[#b42318]' : 'text-[#344054]',
+    },
+    {
+      label: '保存',
+      value: capabilities.localStorage === 'supported' ? '端末内保存に対応' : '未対応',
+      tone: supportTone(capabilities.localStorage === 'supported'),
+    },
+    {
+      label: '表示モード',
+      value: capabilities.displayMode === 'standalone' ? 'ホーム追加表示' : 'ブラウザ',
+      tone: 'text-[#344054]',
+    },
+    {
+      label: '通信状態',
+      value: capabilities.networkStatus === 'offline' ? 'オフライン' : 'オンライン',
+      tone: capabilities.networkStatus === 'offline' ? 'text-[#b42318]' : 'text-emerald-700',
+    },
+  ];
+}
+
 export function SettingsPage({ onNavigate }: SettingsPageProps) {
+  const [capabilities, setCapabilities] = useState<DeviceCapabilitySnapshot>(() =>
+    deviceCapabilities.getInitialSnapshot(),
+  );
+  const [audioStatus, setAudioStatus] = useState('未実行');
+  const [recordingStatus, setRecordingStatus] = useState('未実行');
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordedAudio, setRecordedAudio] = useState<RecordedAudio | null>(null);
+  const recorderSessionRef = useRef<RecorderSession | null>(null);
+
+  const refreshCapabilities = useCallback(async () => {
+    const nextCapabilities = await deviceCapabilities.getSnapshot();
+    setCapabilities(nextCapabilities);
+  }, []);
+
+  useEffect(() => {
+    void refreshCapabilities();
+
+    const handleDeviceChange = () => {
+      void refreshCapabilities();
+    };
+
+    window.addEventListener('online', handleDeviceChange);
+    window.addEventListener('offline', handleDeviceChange);
+    window.speechSynthesis?.addEventListener?.('voiceschanged', handleDeviceChange);
+
+    return () => {
+      window.removeEventListener('online', handleDeviceChange);
+      window.removeEventListener('offline', handleDeviceChange);
+      window.speechSynthesis?.removeEventListener?.('voiceschanged', handleDeviceChange);
+    };
+  }, [refreshCapabilities]);
+
+  useEffect(
+    () => () => {
+      recorderSessionRef.current?.cancel();
+      speechService.stop();
+    },
+    [],
+  );
+
+  useEffect(() => () => recorderService.releaseRecording(recordedAudio), [recordedAudio]);
+
+  const handleSpeechTest = () => {
+    const result = speechService.speak(SPEECH_TEST_TEXT, {
+      callbacks: {
+        onError: () => {
+          setAudioStatus('この端末では音声再生が使えない可能性があります');
+        },
+      },
+    });
+
+    if (result.ok) {
+      setAudioStatus('音声テストを再生しました');
+    } else {
+      setAudioStatus('この端末では音声再生が使えない可能性があります');
+    }
+
+    void refreshCapabilities();
+  };
+
+  const stopRecordingTest = async () => {
+    const session = recorderSessionRef.current;
+
+    if (!session) {
+      setRecordingStatus('録音を開始できていません');
+      setIsRecording(false);
+      return;
+    }
+
+    try {
+      const recording = await session.stop();
+      setRecordedAudio(recording);
+      setRecordingStatus('録音できました');
+    } catch {
+      setRecordingStatus('録音を停止できませんでした。もう一度お試しください。');
+    } finally {
+      recorderSessionRef.current = null;
+      setIsRecording(false);
+      void refreshCapabilities();
+    }
+  };
+
+  const handleRecordingTest = async () => {
+    if (isRecording) {
+      await stopRecordingTest();
+      return;
+    }
+
+    recorderService.releaseRecording(recordedAudio);
+    setRecordedAudio(null);
+    setRecordingStatus('マイク許可を確認しています');
+
+    const result = await recorderService.startRecording();
+
+    if (!result.ok) {
+      setRecordingStatus(result.error.message);
+      setIsRecording(false);
+      void refreshCapabilities();
+      return;
+    }
+
+    recorderSessionRef.current = result.session;
+    setIsRecording(true);
+    setRecordingStatus('録音中');
+    void refreshCapabilities();
+  };
+
+  const playRecordedAudio = () => {
+    if (!recordedAudio) {
+      setRecordingStatus('聞き返す録音がありません');
+      return;
+    }
+
+    const audio = new Audio(recordedAudio.url);
+    void audio.play().catch(() => {
+      setRecordingStatus('録音音声を再生できませんでした');
+    });
+  };
+
   return (
     <div>
       <Header
@@ -36,6 +218,62 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
             初回実装では、保存したフレーズはこの端末のブラウザ内に置かれます。
             将来はAI生成、音声認識、Supabase連携へ差し替えられる構造にしています。
           </p>
+        </article>
+
+        <article className="glass-card rounded-[20px] p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <Smartphone aria-hidden="true" className="text-[var(--brand-blue)]" size={20} />
+            <h2 className="text-base font-black text-[#141821]">端末チェック</h2>
+          </div>
+          <p className="mb-3 text-sm font-bold leading-relaxed text-[#344054]">
+            この端末で音声・録音・保存が使えるか確認します。
+          </p>
+
+          <dl className="grid grid-cols-1 gap-2 text-sm">
+            {statusLabel(capabilities).map((item) => (
+              <div
+                className="flex min-h-10 items-center justify-between gap-3 rounded-[14px] border border-[#e5ebf3] bg-white px-3 py-2"
+                key={item.label}
+              >
+                <dt className="shrink-0 font-bold text-[#667085]">{item.label}</dt>
+                <dd className={`text-right font-black ${item.tone}`}>{item.value}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <PrimaryButton
+              icon={<Volume2 aria-hidden="true" size={18} />}
+              variant="soft"
+              onClick={handleSpeechTest}
+            >
+              音声テスト
+            </PrimaryButton>
+            <PrimaryButton
+              icon={isRecording ? <Square aria-hidden="true" size={17} /> : <Mic2 aria-hidden="true" size={18} />}
+              variant={isRecording ? 'danger' : 'soft'}
+              onClick={handleRecordingTest}
+            >
+              {isRecording ? '停止' : '録音テスト'}
+            </PrimaryButton>
+            {recordedAudio ? (
+              <PrimaryButton icon={<Volume2 aria-hidden="true" size={18} />} variant="ghost" onClick={playRecordedAudio}>
+                録音を聞く
+              </PrimaryButton>
+            ) : null}
+            <PrimaryButton
+              icon={<RefreshCw aria-hidden="true" size={18} />}
+              variant="ghost"
+              onClick={() => void refreshCapabilities()}
+            >
+              状態を再確認
+            </PrimaryButton>
+          </div>
+
+          <div className="mt-3 rounded-[14px] bg-[#f9fbff] px-3 py-2 text-xs font-bold leading-relaxed text-[#667085]">
+            <p>音声：{audioStatus}</p>
+            <p>録音：{recordingStatus}</p>
+          </div>
         </article>
 
         <article className="rounded-[18px] border border-[#d9e1ee] bg-[#f9fbff] p-4">

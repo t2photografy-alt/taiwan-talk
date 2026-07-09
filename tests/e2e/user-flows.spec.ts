@@ -21,6 +21,10 @@ const guardedButtonLabels = [
   'もう一回録音',
   '発音チェックへ',
   '苦手に保存',
+  '音声テスト',
+  '録音テスト',
+  '録音を聞く',
+  '状態を再確認',
 ];
 
 async function clearSavedPhrases(page: Page) {
@@ -343,9 +347,33 @@ test('Flow F: 左上メニューから設定へ進み禁止文言が出ていな
   await page.getByLabel('設定を開く').click();
   await expect(page).toHaveURL('/settings');
   await expect(page.getByRole('heading', { name: '設定' })).toBeVisible();
+  await expect(page.getByText('端末チェック')).toBeVisible();
+  await expect(page.getByText('この端末で音声・録音・保存が使えるか確認します。')).toBeVisible();
+  await expect(page.getByRole('button', { name: '音声テスト' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '録音テスト' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '状態を再確認' })).toBeVisible();
   await expect(page.getByText('台湾華語の表現は、今後ネイティブ確認を入れて調整予定です。')).toBeVisible();
   await expectNoForbiddenText(page);
   await expectLogoHealthy(page);
+  await expectPageChromeHealthy(page);
+});
+
+test('端末チェック: 音声テストと録音テストUIが操作できる', async ({ page }) => {
+  await installMockRecorder(page);
+  await page.goto('/settings');
+  await expect(page.getByText('端末チェック')).toBeVisible();
+
+  await page.getByRole('button', { name: '音声テスト' }).click();
+  await expect(page.getByText('音声テストを再生しました')).toBeVisible();
+
+  await page.getByRole('button', { name: '録音テスト' }).click();
+  await expect(page.getByText('録音中')).toBeVisible();
+  await page.getByRole('button', { name: '停止', exact: true }).click();
+  await expect(page.getByText('録音できました')).toBeVisible();
+  await expect(page.getByRole('button', { name: '録音を聞く' })).toBeVisible();
+
+  await page.getByRole('button', { name: '状態を再確認' }).click();
+  await expectNoForbiddenText(page);
   await expectPageChromeHealthy(page);
 });
 
@@ -358,6 +386,7 @@ test('390px layout smoke: required pages keep nav, logo, buttons, and width heal
     await expectBottomNavVisible(page);
     await expectNoForbiddenText(page);
     if (path === '/settings') {
+      await expect(page.getByText('端末チェック')).toBeVisible();
       await expect(page.getByText('台湾華語の表現は、今後ネイティブ確認を入れて調整予定です。')).toBeVisible();
     }
     if (path === '/practice') {

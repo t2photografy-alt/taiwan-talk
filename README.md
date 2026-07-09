@@ -31,6 +31,14 @@ Taiwan Talk is a Taiwan Mandarin and Japanese conversation support app for quick
 - `needsNativeCheck: true` and `reviewStatus: needs-native-check` are still maintained
 - Phrase wording is still not native-approved
 
+## Phase 2D Status
+
+- PWA manifest was strengthened with portrait orientation and app icons
+- Android device QA checklist added in `docs/android-device-qa.md`
+- Settings now includes a device check for audio, recording, local storage, display mode, and network state
+- Audio and recording behavior still depends on the browser and device
+- Pronunciation analysis is still mocked
+
 ## Tech Stack
 
 - React
@@ -77,6 +85,8 @@ npm run qa:flow
 
 `npm run qa:screenshots` writes review images to `outputs/visual-qa/`.
 
+For Android manual QA, use `docs/android-device-qa.md`.
+
 ## Deploy To Vercel
 
 The app is a Vite SPA. `vercel.json` rewrites all routes to `index.html` so direct links such as `/compose`, `/saved`, and `/display/preset-see-you-long-time` do not 404.
@@ -104,3 +114,4 @@ The app intentionally keeps these areas mocked or pending final verification:
 - Taiwan Mandarin wording: marked with `needsNativeCheck`
 - Audio playback: implemented with browser `speechSynthesis`
 - Recording: implemented as a browser `MediaRecorder` foundation
+- Android/PWA support: browser and device dependent
