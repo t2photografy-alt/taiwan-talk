@@ -54,8 +54,11 @@ function buildGenerateApiRequest(request: ConversationRequest): GenerateConversa
     targetLanguage: languages.targetLanguage,
     tone: request.tone,
     category: request.category,
-    purpose: 'スマホ画面で相手に見せやすい短い会話表現を作る',
-    relationship: request.tone === 'polite' ? '少し丁寧な距離感' : '友達やイベントで自然に話せる距離感',
+    purpose: '対面で見せやすく、SNS/DMでも送りやすい短い会話表現を作る',
+    relationship:
+      request.tone === 'polite'
+        ? '少し丁寧な距離感'
+        : '友達・知人・パフォーマー・SNS/DM相手に自然に伝わる距離感',
   };
 }
 
@@ -68,7 +71,7 @@ function buildReplyApiRequest(request: MessageReplyRequest): GenerateConversatio
     tone: request.tone,
     category: 'dm',
     purpose: '相手から届いた台湾華語メッセージへの自然な返信候補を作る',
-    relationship: 'DMやイベント後の友達寄りの距離感',
+    relationship: '対面後やSNS/DMで自然に返せる友達寄りの距離感',
     replyIntent: request.intent,
   };
 }

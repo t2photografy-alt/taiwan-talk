@@ -72,6 +72,7 @@ npm run qa:ai-generation
 
 `qa:flow` は保存、表示、練習、メッセージ返信などの実使用導線を見る。
 `qa:ai-generation` は、生成サンプルの品質確認材料を集める。
+Taiwan Talk はイベント会場専用ではなく、対面、SNS/DM、写真撮影前後、再会時の挨拶、お礼、軽い誘い、返信作成など複数シーンを前提にする。
 
 - 固定文言一致ではなく、構造、意図キーワード、確認前フラグを見る。
 - `resultText`、`pinyin`、`needsNativeCheck`、`reviewStatus`、`meta.provider`、`meta.generatedAt` を確認する。

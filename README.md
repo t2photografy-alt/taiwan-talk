@@ -2,6 +2,8 @@
 
 Taiwan Talk is a Taiwan Mandarin and Japanese conversation support app for quickly creating, saving, showing, and practicing phrases.
 
+It is not an event-only app. Event conversations are one representative use case, but the app is meant for short face-to-face conversations, SNS/DM replies, photo exchanges, greetings after meeting again, thanks, light invitations, gentle declines, and comments on performances or works.
+
 ## Phase 1 Status
 
 - Production URL: https://taiwan-talk.vercel.app/

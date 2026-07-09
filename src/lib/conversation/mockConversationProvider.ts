@@ -57,14 +57,14 @@ function resultForJapanese(request: ConversationRequest): ConversationResult {
       targetLanguage: 'zh-TW',
       tone: request.tone,
       category: request.category,
-      nuance: '友達やイベントで、自然に写真へ誘う言い方です。',
+      nuance: '対面やSNS/DMで、自然に写真へ誘う言い方です。',
       readabilityScore: 83,
       alternatives: [
         {
           label: '許可を聞く',
           resultText: '可以拍照嗎？',
           pinyin: 'ke yi pai zhao ma',
-          note: '相手や会場ルールを確認したい時に。',
+          note: '相手や場所のルールを確認したい時に。',
         },
         {
           label: '少し丁寧',
@@ -85,7 +85,7 @@ function resultForJapanese(request: ConversationRequest): ConversationResult {
       targetLanguage: 'zh-TW',
       tone: request.tone,
       category: request.category,
-      nuance: 'イベント後に、よかった気持ちをまっすぐ伝える仮文です。',
+      nuance: 'パフォーマンスや作品への感想として、よかった気持ちをまっすぐ伝える仮文です。',
       readabilityScore: 82,
       alternatives: [
         {

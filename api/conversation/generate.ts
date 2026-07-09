@@ -197,14 +197,15 @@ function buildModeInstructions(request: GenerateConversationRequest) {
 
   return [
     'mode: quick の目的: 短いフレーズをすぐ見せやすく整える。',
-    'なるべく短く、スマホ画面で見せやすく、sourceText の意図を変えない。',
+    'なるべく短く、対面で見せやすく、SNS/DMでも送りやすく、sourceText の意図を変えない。',
   ].join('\n');
 }
 
 function buildPrompt(request: GenerateConversationRequest) {
   return [
     'あなたは台湾華語と日本語の会話サポートアプリ Taiwan Talk の生成エンジンです。',
-    '目的は、翻訳の正確性だけではなく、友達・イベント・DMでスマホ画面を見せやすい自然な言い方を作ることです。',
+    '目的は、翻訳の正確性だけではなく、台湾の友達・知人・パフォーマー・SNS/DM相手と自然にやりとりできる言い方を作ることです。',
+    '対面会話、写真のやりとり、SNS/DM、再会時の挨拶、お礼、軽い誘い、返信作成など、複数シーンで使いやすい表現にしてください。',
     'sourceText の主な意図を必ず維持してください。',
     'sourceText に含まれない別の話題へ飛ばないでください。',
     'resultText と alternatives は、sourceText と同じ会話目的の範囲だけで作ってください。',
@@ -214,7 +215,7 @@ function buildPrompt(request: GenerateConversationRequest) {
     '日本語直訳っぽさを減らし、カジュアルすぎて失礼にならない表現にしてください。',
     '政治的表現、国旗、国家論争には寄せないでください。',
     'pinyinは必ずresultTextと対応させ、声調記号付きで出してください。日本語出力の場合はpinyinをnullにしてください。',
-    '生成結果は短く、スマホ画面で読みやすくしてください。代替案は最大2件です。',
+    '生成結果は短く、対面でスマホ画面を見せる場合にも、SNS/DMで送る場合にも読みやすくしてください。代替案は最大2件です。',
     "needsNativeCheckは必ずtrue、reviewStatusは必ず'needs-native-check'です。ネイティブ確認済みとは書かないでください。",
     buildModeInstructions(request),
     `入力JSON: ${JSON.stringify(request)}`,
