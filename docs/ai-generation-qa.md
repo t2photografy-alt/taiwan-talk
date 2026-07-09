@@ -82,7 +82,7 @@ Taiwan Talk のAI生成は、まだ品質完成やネイティブ確認済みと
 | ID | ケース | mode | sourceText | sourceLanguage | targetLanguage | tone | replyIntent | 期待 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | M01 | また遊ぼう | message-reply | 下次也一起玩吧～ | zh-TW | zh-TW | friendly | また会いたい | また会いたい/次も一緒に何かしたい返信。`下次` / `再` / `一起` / `見` / `玩` などの方向性。無関係な写真依頼に飛ばない。 |
-| M02 | 写真ありがとう | message-reply | 謝謝你幫我拍照！ | zh-TW | zh-TW | friendly | うれしい | 喜び、こちらこそ、また撮りたい等。感謝に自然に返す。 |
+| M02 | 写真ありがとう | message-reply | 謝謝你幫我拍照！ | zh-TW | zh-TW | friendly | うれしい | 喜び、こちらこそ、役に立てて嬉しい、また撮りたい等。`不客氣` / `高興` / `開心` / `幫得上忙` / `幫忙` / `拍照` / `照片` / `下次` などを自然な方向として見る。 |
 | M03 | また来てね | message-reply | 明年也要來喔！ | zh-TW | zh-TW | friendly | また会いたい | 来年も行きたい/また会いたい。短く自然。 |
 | M04 | 写真送る | message-reply | 可以傳照片給我嗎？ | zh-TW | zh-TW | friendly | 写真を送る | 写真を送る返答。`等一下` / `我傳給你` / `沒問題` などの方向性。 |
 | M05 | やんわり断る返信 | message-reply | 今天晚上一起去吃飯嗎？ | zh-TW | zh-TW | polite | やんわり断る | 丁寧に断る。申し訳なさと次回につなげるニュアンス。きつい拒否にしない。 |
