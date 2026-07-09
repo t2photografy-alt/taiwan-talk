@@ -25,7 +25,7 @@ type ModelConversationResult = Omit<
   GeneratedConversationResult,
   'pinyin' | 'nuance' | 'alternatives' | 'naturalnessNote'
 > & {
-  pinyin: string | null;
+  pinyin: string;
   nuance: string | null;
   alternatives: Array<{
     label: string;
@@ -74,7 +74,7 @@ const generationSchema = {
   properties: {
     sourceText: { type: 'string' },
     resultText: { type: 'string' },
-    pinyin: { type: ['string', 'null'] },
+    pinyin: { type: 'string' },
     sourceLanguage: { type: 'string', enum: languages },
     targetLanguage: { type: 'string', enum: languages },
     tone: { type: 'string', enum: tones },
@@ -225,6 +225,7 @@ function buildPrompt(request: GenerateConversationRequest) {
     '政治的表現、国旗、国家論争には寄せないでください。',
     'targetLanguage が zh-TW の場合、resultText は繁体字の台湾華語にし、pinyin は resultText の読みを声調記号付きで返してください。',
     'targetLanguage が ja の場合、resultText は自然な日本語にし、pinyin は sourceText の台湾華語の読みを声調記号付きで返してください。日本語 resultText に対して pinyin を作らないでください。',
+    'pinyin フィールドは必ず空でない文字列にしてください。sourceLanguage または targetLanguage に zh-TW が含まれるため、台湾華語本文の読みを必ず入れてください。',
     '生成結果は短く、対面でスマホ画面を見せる場合にも、SNS/DMで送る場合にも読みやすくしてください。代替案は最大2件です。',
     "needsNativeCheckは必ずtrue、reviewStatusは必ず'needs-native-check'です。ネイティブ確認済みとは書かないでください。",
     buildModeInstructions(request),
