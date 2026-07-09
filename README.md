@@ -87,6 +87,13 @@ It is not an event-only app. Event conversations are one representative use case
 - Input fields start empty by default; examples are shown as placeholders.
 - Taiwan Mandarin UI labels are still review targets and are not native-approved.
 
+## Speech Target Rules
+
+- `聞く` / `ゆっくり` read the current result language: Taiwan Mandarin for Japanese → Taiwan Mandarin, and Japanese for Taiwan Mandarin → Japanese.
+- Taiwan Mandarin → Japanese also keeps a supplemental `原文を聞く` path for the Taiwan Mandarin source text when space allows.
+- Practice continues to prioritize the Taiwan Mandarin text: `resultText` for Japanese → Taiwan Mandarin, and `sourceText` for Taiwan Mandarin → Japanese.
+- `pinyin` is always the reading for the Taiwan Mandarin text in the phrase pair, not for Japanese `resultText`.
+
 ## Tech Stack
 
 - React

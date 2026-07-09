@@ -145,6 +145,36 @@ const cases = [
     forbiddenKeywords: ['我會說', '我在學'],
   },
   {
+    id: 'ZH01',
+    title: '台湾華語を日本語へ',
+    request: {
+      mode: 'compose',
+      sourceText: '下次也一起玩吧～',
+      sourceLanguage: 'zh-TW',
+      targetLanguage: 'ja',
+      tone: 'friendly',
+      category: 'seeAgain',
+    },
+    expected: 'resultText は自然な日本語。pinyin は sourceText の台湾華語読み。',
+    intentKeywords: ['次', 'また', '一緒', '遊'],
+    forbiddenKeywords: ['好久不見', '愛して'],
+  },
+  {
+    id: 'ZH02',
+    title: '写真メッセージを日本語へ',
+    request: {
+      mode: 'compose',
+      sourceText: '等一下我把照片傳給你～',
+      sourceLanguage: 'zh-TW',
+      targetLanguage: 'ja',
+      tone: 'friendly',
+      category: 'photo',
+    },
+    expected: 'resultText は自然な日本語で、写真をあとで送るニュアンス。pinyin は sourceText の台湾華語読み。',
+    intentKeywords: ['写真', '送', 'あと', '後'],
+    forbiddenKeywords: ['撮らせ', '撮って'],
+  },
+  {
     id: 'M01',
     title: 'また遊ぼう',
     request: {
@@ -236,6 +266,8 @@ const mockResults = {
   C07: ['不好意思，今天有點難，下次有機會再麻煩你。', 'bù hǎo yì si, jīn tiān yǒu diǎn nán, xià cì yǒu jī huì zài má fán nǐ'],
   C08: ['我晚點把照片傳給你！', 'wǒ wǎn diǎn bǎ zhào piàn chuán gěi nǐ'],
   C09: ['請問你會說一點日文嗎？', 'qǐng wèn nǐ huì shuō yì diǎn rì wén ma'],
+  ZH01: ['次もまた一緒に遊ぼうね〜', 'xià cì yě yì qǐ wán ba'],
+  ZH02: ['あとで写真を送るね〜', 'děng yí xià wǒ bǎ zhào piàn chuán gěi nǐ'],
   M01: ['好啊，下次再一起玩！', 'hǎo a, xià cì zài yì qǐ wán'],
   M02: ['我也很開心，謝謝你讓我拍照！', 'wǒ yě hěn kāi xīn, xiè xie nǐ ràng wǒ pāi zhào'],
   M03: ['一定會，明年也想再見到你！', 'yí dìng huì, míng nián yě xiǎng zài jiàn dào nǐ'],
@@ -278,6 +310,10 @@ function isTraditionalChineseLikely(text) {
   return /[\u3400-\u9fff]/.test(text) && !/[ぁ-んァ-ン]/.test(text);
 }
 
+function isJapaneseLikely(text) {
+  return /[ぁ-んァ-ン]/.test(text);
+}
+
 function hasToneMarkedPinyin(text) {
   return /[āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜü]/i.test(text);
 }
@@ -295,7 +331,11 @@ function evaluateResult(testCase, payload, httpStatus) {
   add('HTTP status is not 500', httpStatus < 500);
   add('ok true', payload.ok === true);
   add('resultText not empty', resultText.trim().length > 0);
-  add('Traditional Chinese likely', isTraditionalChineseLikely(resultText), 'warn');
+  if (testCase.request.targetLanguage === 'ja') {
+    add('Japanese result likely', isJapaneseLikely(resultText));
+  } else {
+    add('Traditional Chinese likely', isTraditionalChineseLikely(resultText), 'warn');
+  }
   add('pinyin exists', pinyin.trim().length > 0);
   add('pinyin has tone marks', hasToneMarkedPinyin(pinyin), 'warn');
   add('needsNativeCheck true', result.needsNativeCheck === true);

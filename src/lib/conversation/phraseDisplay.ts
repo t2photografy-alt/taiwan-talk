@@ -1,4 +1,12 @@
 import type { LanguageDirection, Phrase } from './types';
+import type { SpeechLanguage } from '../speech/types';
+
+type PhraseTextPair = Pick<Phrase, 'sourceLanguage' | 'targetLanguage' | 'sourceText' | 'resultText'>;
+
+export type SpeechTarget = {
+  text: string;
+  language: SpeechLanguage;
+};
 
 export function getPhraseDirection(phrase: Pick<Phrase, 'sourceLanguage' | 'targetLanguage'>): LanguageDirection {
   return phrase.sourceLanguage === 'zh-TW' && phrase.targetLanguage === 'ja'
@@ -6,7 +14,11 @@ export function getPhraseDirection(phrase: Pick<Phrase, 'sourceLanguage' | 'targ
     : 'ja-to-zh-TW';
 }
 
-export function getMandarinText(phrase: Pick<Phrase, 'sourceLanguage' | 'targetLanguage' | 'sourceText' | 'resultText'>) {
+function toSpeechLanguage(language: Phrase['targetLanguage']): SpeechLanguage {
+  return language === 'ja' ? 'ja-JP' : 'zh-TW';
+}
+
+export function getMandarinText(phrase: PhraseTextPair) {
   if (phrase.sourceLanguage === 'zh-TW') {
     return phrase.sourceText;
   }
@@ -16,6 +28,24 @@ export function getMandarinText(phrase: Pick<Phrase, 'sourceLanguage' | 'targetL
   }
 
   return phrase.resultText;
+}
+
+export function getMainSpeechTarget(phrase: PhraseTextPair): SpeechTarget {
+  return {
+    text: phrase.resultText,
+    language: toSpeechLanguage(phrase.targetLanguage),
+  };
+}
+
+export function getOriginalSpeechTarget(phrase: PhraseTextPair): SpeechTarget | null {
+  if (phrase.sourceLanguage !== 'zh-TW' || phrase.targetLanguage !== 'ja') {
+    return null;
+  }
+
+  return {
+    text: phrase.sourceText,
+    language: 'zh-TW',
+  };
 }
 
 export function getDisplayMainText(phrase: Pick<Phrase, 'resultText'>) {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { speechService } from './speechService';
-import type { SpeechPlaybackSpeed } from './types';
+import type { SpeechLanguage, SpeechPlaybackSpeed } from './types';
 import { readVoicePreference } from './voicePreference';
 
 type PlaybackState = {
@@ -11,6 +11,7 @@ type PlaybackState = {
 type TogglePlaybackOptions = {
   phraseId: string;
   text: string;
+  language?: SpeechLanguage;
   speed: SpeechPlaybackSpeed;
 };
 
@@ -29,7 +30,7 @@ export function useSpeechPlayback() {
   }, []);
 
   const toggle = useCallback(
-    ({ phraseId, text, speed }: TogglePlaybackOptions) => {
+    ({ phraseId, text, language, speed }: TogglePlaybackOptions) => {
       setError('');
 
       if (playback.phraseId === phraseId && playback.mode === speed) {
@@ -38,6 +39,7 @@ export function useSpeechPlayback() {
       }
 
       const result = speechService.speak(text, {
+        language,
         speed,
         voicePreference: readVoicePreference(),
         callbacks: {

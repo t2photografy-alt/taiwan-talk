@@ -9,7 +9,7 @@ import {
   Volume2,
 } from 'lucide-react';
 import type { Phrase } from '../lib/conversation/types';
-import { getMandarinText } from '../lib/conversation/phraseDisplay';
+import { getMainSpeechTarget, getOriginalSpeechTarget } from '../lib/conversation/phraseDisplay';
 import { useDisplayLanguage } from '../lib/displayLanguage/DisplayLanguageProvider';
 import { useSpeechPlayback } from '../lib/speech/useSpeechPlayback';
 import { PrimaryButton } from './PrimaryButton';
@@ -38,9 +38,12 @@ export function PhraseCard({
   const { t } = useDisplayLanguage();
   const speechPlayback = useSpeechPlayback();
   const cardLabel = label ?? t('compose.recommended');
-  const speechText = getMandarinText(phrase);
+  const mainSpeechTarget = getMainSpeechTarget(phrase);
+  const originalSpeechTarget = getOriginalSpeechTarget(phrase);
+  const originalSpeechId = `${phrase.id}:original`;
   const isNormalPlaying = speechPlayback.isPlaying(phrase.id, 'normal');
   const isSlowPlaying = speechPlayback.isPlaying(phrase.id, 'slow');
+  const isOriginalPlaying = speechPlayback.isPlaying(originalSpeechId, 'normal');
 
   if (compact) {
     return (
@@ -104,19 +107,59 @@ export function PhraseCard({
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2">
         <PrimaryButton
+          data-speech-language={mainSpeechTarget.language}
+          data-speech-text={mainSpeechTarget.text}
+          data-testid="phrase-main-listen"
           icon={<Volume2 aria-hidden="true" size={18} />}
           variant="danger"
-          onClick={() => speechPlayback.toggle({ phraseId: phrase.id, text: speechText, speed: 'normal' })}
+          onClick={() =>
+            speechPlayback.toggle({
+              phraseId: phrase.id,
+              text: mainSpeechTarget.text,
+              language: mainSpeechTarget.language,
+              speed: 'normal',
+            })
+          }
         >
           {isNormalPlaying ? t('cta.stop') : t('cta.listen')}
         </PrimaryButton>
         <PrimaryButton
+          data-speech-language={mainSpeechTarget.language}
+          data-speech-text={mainSpeechTarget.text}
+          data-testid="phrase-main-slow"
           icon={<Clock3 aria-hidden="true" size={18} />}
           variant="soft"
-          onClick={() => speechPlayback.toggle({ phraseId: phrase.id, text: speechText, speed: 'slow' })}
+          onClick={() =>
+            speechPlayback.toggle({
+              phraseId: phrase.id,
+              text: mainSpeechTarget.text,
+              language: mainSpeechTarget.language,
+              speed: 'slow',
+            })
+          }
         >
           {isSlowPlaying ? t('cta.stop') : t('cta.slow')}
         </PrimaryButton>
+        {originalSpeechTarget ? (
+          <PrimaryButton
+            className="col-span-2"
+            data-speech-language={originalSpeechTarget.language}
+            data-speech-text={originalSpeechTarget.text}
+            data-testid="phrase-original-listen"
+            icon={<Volume2 aria-hidden="true" size={18} />}
+            variant="soft"
+            onClick={() =>
+              speechPlayback.toggle({
+                phraseId: originalSpeechId,
+                text: originalSpeechTarget.text,
+                language: originalSpeechTarget.language,
+                speed: 'normal',
+              })
+            }
+          >
+            {isOriginalPlaying ? t('cta.stop') : t('cta.listenOriginal')}
+          </PrimaryButton>
+        ) : null}
         <PrimaryButton
           icon={<Maximize2 aria-hidden="true" size={18} />}
           variant="soft"

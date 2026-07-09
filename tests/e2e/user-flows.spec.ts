@@ -12,6 +12,7 @@ const forbiddenTerms = [
 
 const guardedButtonLabels = [
   '聞く',
+  '原文を聞く',
   'ゆっくり',
   '大きく表示',
   '練習する',
@@ -43,13 +44,24 @@ async function clearSavedPhrases(page: Page) {
 
 async function installMockSpeech(page: Page) {
   await page.addInitScript(() => {
-    const voice = {
+    const taiwanVoice = {
       default: true,
       lang: 'zh-TW',
       localService: true,
       name: 'Mock Taiwan Voice',
       voiceURI: 'mock-taiwan-voice',
     } as SpeechSynthesisVoice;
+    const japaneseVoice = {
+      default: false,
+      lang: 'ja-JP',
+      localService: true,
+      name: 'Mock Japanese Voice',
+      voiceURI: 'mock-japanese-voice',
+    } as SpeechSynthesisVoice;
+    const voices = [taiwanVoice, japaneseVoice];
+    (window as unknown as {
+      __speechCalls: Array<{ text: string; lang: string; rate: number; voiceLang: string | null }>;
+    }).__speechCalls = [];
 
     class MockSpeechSynthesisUtterance extends EventTarget {
       lang = '';
@@ -87,9 +99,17 @@ async function installMockSpeech(page: Page) {
           activeUtterance = null;
           ended.onend?.(new Event('end') as SpeechSynthesisEvent);
         },
-        getVoices: () => [voice],
+        getVoices: () => voices,
         speak: (utterance: SpeechSynthesisUtterance) => {
           activeUtterance = utterance;
+          (window as unknown as {
+            __speechCalls: Array<{ text: string; lang: string; rate: number; voiceLang: string | null }>;
+          }).__speechCalls.push({
+            text: utterance.text,
+            lang: utterance.lang,
+            rate: utterance.rate,
+            voiceLang: utterance.voice?.lang ?? null,
+          });
           window.setTimeout(() => utterance.onstart?.(new Event('start') as SpeechSynthesisEvent), 0);
         },
       },
@@ -289,7 +309,7 @@ async function expectNativeCheckFromApiIfAvailable(response: Response | null) {
 
   expect(payload.ok).toBe(true);
   expect(payload.result?.resultText).toEqual(expect.any(String));
-  if (payload.result?.targetLanguage !== 'ja') {
+  if (payload.result?.targetLanguage !== 'ja' || payload.result?.sourceLanguage === 'zh-TW') {
     expect(payload.result?.pinyin).toEqual(expect.any(String));
   }
   expect(payload.result?.needsNativeCheck).toBe(true);
@@ -312,6 +332,40 @@ async function expectGenerationRequestLanguages(
 
   expect(requestBody.sourceLanguage).toBe(sourceLanguage);
   expect(requestBody.targetLanguage).toBe(targetLanguage);
+}
+
+async function expectLatestSpeechCall(
+  page: Page,
+  expected: { lang: 'zh-TW' | 'ja-JP'; text: string | RegExp; rate?: number },
+) {
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const calls = (window as unknown as {
+          __speechCalls?: Array<{ text: string; lang: string; rate: number; voiceLang: string | null }>;
+        }).__speechCalls ?? [];
+        return calls.at(-1) ?? null;
+      }),
+    )
+    .not.toBeNull();
+
+  const call = await page.evaluate(() => {
+    const calls = (window as unknown as {
+      __speechCalls?: Array<{ text: string; lang: string; rate: number; voiceLang: string | null }>;
+    }).__speechCalls ?? [];
+    return calls.at(-1) ?? null;
+  });
+
+  expect(call?.lang).toBe(expected.lang);
+  expect(call?.voiceLang).toBe(expected.lang);
+  if (typeof expected.text === 'string') {
+    expect(normalizeText(call?.text ?? '')).toContain(normalizeText(expected.text));
+  } else {
+    expect(call?.text).toMatch(expected.text);
+  }
+  if (typeof expected.rate === 'number') {
+    expect(call?.rate).toBeCloseTo(expected.rate);
+  }
 }
 
 async function readGeneratedTaiwanText(locator: Locator) {
@@ -338,6 +392,9 @@ async function createAndSavePhotoPhrase(page: Page) {
   const resultText = await readGeneratedTaiwanText(page.getByTestId('compose-result-text'));
   expect(resultText).toMatch(photoIntentPattern);
   await expect(page.getByTestId('compose-result-pinyin')).not.toHaveText('', { timeout: generationWaitMs });
+  await expect(page.getByTestId('compose-main-listen')).toHaveAttribute('data-speech-language', 'zh-TW');
+  await expect(page.getByTestId('compose-main-listen')).toHaveAttribute('data-speech-text', resultText);
+  await expect(page.getByTestId('compose-original-listen')).toHaveCount(0);
   await expect(page.getByTestId('needs-native-check-note')).toContainText('確認前');
   await expectNativeCheckFromApiIfAvailable(await responsePromise);
 
@@ -362,12 +419,16 @@ test('Flow A: 使う画面から大きく表示して戻れる', async ({ page }
   await expectBottomNavVisible(page);
   await expectPageChromeHealthy(page);
 
+  await expect(page.getByTestId('phrase-main-listen').first()).toHaveAttribute('data-speech-language', 'zh-TW');
+  await expect(page.getByTestId('phrase-main-listen').first()).toHaveAttribute('data-speech-text', /好久不見/);
   await page.getByRole('button', { name: '聞く' }).first().click();
+  await expectLatestSpeechCall(page, { lang: 'zh-TW', text: /好久不見/ });
   await expect(page.getByRole('button', { name: '停止' }).first()).toBeVisible();
   await page.getByRole('button', { name: '停止' }).first().click();
   await expect(page.getByRole('button', { name: '聞く' }).first()).toBeVisible();
 
   await page.getByRole('button', { name: 'ゆっくり' }).first().click();
+  await expectLatestSpeechCall(page, { lang: 'zh-TW', text: /好久不見/, rate: 0.6 });
   await expect(page.getByRole('button', { name: '停止' }).first()).toBeVisible();
   await page.getByRole('button', { name: '聞く' }).first().click();
   await expect(page.getByRole('button', { name: '停止' }).first()).toBeVisible();
@@ -389,6 +450,16 @@ test('Flow A: 使う画面から大きく表示して戻れる', async ({ page }
   await page.getByRole('button', { name: '台湾華語 → 日本語' }).click();
   await expect(page.getByRole('button', { name: '台湾華語 → 日本語' })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByText('終於又見到你了，真的很開心！')).toBeVisible();
+  await expect(page.getByTestId('phrase-main-listen').first()).toHaveAttribute('data-speech-language', 'ja-JP');
+  await expect(page.getByTestId('phrase-main-listen').first()).toHaveAttribute('data-speech-text', /久しぶり/);
+  await expect(page.getByTestId('phrase-original-listen').first()).toHaveAttribute('data-speech-language', 'zh-TW');
+  await expect(page.getByTestId('phrase-original-listen').first()).toHaveAttribute('data-speech-text', /好久不見/);
+  await page.getByTestId('phrase-main-listen').first().click();
+  await expectLatestSpeechCall(page, { lang: 'ja-JP', text: /久しぶり/ });
+  await page.getByRole('button', { name: '停止' }).first().click();
+  await page.getByTestId('phrase-original-listen').first().click();
+  await expectLatestSpeechCall(page, { lang: 'zh-TW', text: /好久不見/ });
+  await page.getByRole('button', { name: '停止' }).first().click();
   await page.getByRole('button', { name: '大きく表示' }).first().click();
   await expect(page.getByTestId('display-result-text')).toContainText('久しぶり');
   await expect(page.getByTestId('display-source-text')).toContainText('好久不見');
@@ -397,7 +468,9 @@ test('Flow A: 使う画面から大きく表示して戻れる', async ({ page }
 test('Flow B: 作るから保存して保存画面で検索できる', async ({ page }) => {
   const phrase = await createAndSavePhotoPhrase(page);
   await page.getByRole('button', { name: '聞く' }).first().click();
+  await expectLatestSpeechCall(page, { lang: 'zh-TW', text: phrase.resultText });
   await page.getByRole('button', { name: 'ゆっくり' }).first().click();
+  await expectLatestSpeechCall(page, { lang: 'zh-TW', text: phrase.resultText, rate: 0.6 });
   await expectPageChromeHealthy(page);
 
   await page.goto('/saved');
@@ -451,6 +524,21 @@ test('作る画面: 台湾華語から日本語へ生成して保存・表示・
   const japaneseResult = normalizeText(await page.getByTestId('compose-result-text').innerText());
   expect(japaneseResult).not.toBe('');
   expect(japaneseResult).toMatch(/[ぁ-んァ-ン一-龯]/);
+  await expect(page.getByTestId('compose-result-pinyin')).not.toHaveText('', { timeout: generationWaitMs });
+  await expect(page.getByTestId('compose-main-listen')).toHaveAttribute('data-speech-language', 'ja-JP');
+  expect(normalizeText((await page.getByTestId('compose-main-listen').getAttribute('data-speech-text')) ?? '')).toBe(japaneseResult);
+  await expect(page.getByTestId('compose-main-slow')).toHaveAttribute('data-speech-language', 'ja-JP');
+  await expect(page.getByTestId('compose-original-listen')).toHaveAttribute('data-speech-language', 'zh-TW');
+  await expect(page.getByTestId('compose-original-listen')).toHaveAttribute('data-speech-text', taiwanText);
+  await page.getByTestId('compose-main-listen').click();
+  await expectLatestSpeechCall(page, { lang: 'ja-JP', text: japaneseResult });
+  await page.getByRole('button', { name: '停止' }).first().click();
+  await page.getByTestId('compose-main-slow').click();
+  await expectLatestSpeechCall(page, { lang: 'ja-JP', text: japaneseResult, rate: 0.6 });
+  await page.getByRole('button', { name: '停止' }).first().click();
+  await page.getByTestId('compose-original-listen').click();
+  await expectLatestSpeechCall(page, { lang: 'zh-TW', text: taiwanText });
+  await page.getByRole('button', { name: '停止' }).first().click();
 
   await page.getByTestId('compose-save-button').click();
   await expect(page.getByText('保存しました')).toBeVisible();
@@ -467,6 +555,8 @@ test('作る画面: 台湾華語から日本語へ生成して保存・表示・
   await page.getByTestId('display-practice-button').click();
   await expect(page).toHaveURL(/\/practice\?phrase=phrase-/);
   await expect(page.getByTestId('practice-phrase-text')).toContainText(taiwanText);
+  await expect(page.getByTestId('practice-main-listen')).toHaveAttribute('data-speech-language', 'zh-TW');
+  await expect(page.getByTestId('practice-main-listen')).toHaveAttribute('data-speech-text', taiwanText);
   await expectPageChromeHealthy(page);
 });
 

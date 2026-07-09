@@ -132,10 +132,21 @@ function resultForJapanese(request: ConversationRequest): ConversationResult {
 }
 
 function resultForTaiwaneseMandarin(request: ConversationRequest): ConversationResult {
+  const normalized = request.sourceText.trim() || '謝謝你今天來看表演～';
+  const pinyin = normalized.includes('下次')
+    ? 'xià cì yě yì qǐ wán ba'
+    : normalized.includes('照片')
+      ? 'děng yí xià wǒ bǎ zhào piàn chuán gěi nǐ'
+      : 'xiè xie nǐ jīn tiān lái kàn biǎo yǎn';
+
   return {
-    sourceText: request.sourceText.trim() || '謝謝你今天來看表演～',
-    resultText: '今日は見に来てくれてありがとう〜',
-    pinyin: undefined,
+    sourceText: normalized,
+    resultText: normalized.includes('下次')
+      ? '次もまた一緒に遊ぼうね〜'
+      : normalized.includes('照片')
+        ? 'あとで写真を送るね〜'
+        : '今日は見に来てくれてありがとう〜',
+    pinyin,
     sourceLanguage: 'zh-TW',
     targetLanguage: 'ja',
     tone: request.tone,

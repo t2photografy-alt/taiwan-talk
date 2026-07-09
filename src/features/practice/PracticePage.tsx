@@ -288,12 +288,16 @@ export function PracticePage({
         </div>
         <div className="grid grid-cols-2 gap-2">
           <PrimaryButton
+            data-speech-language="zh-TW"
+            data-speech-text={practiceText}
+            data-testid="practice-main-listen"
             icon={<Volume2 aria-hidden="true" size={18} />}
             variant="blue"
             onClick={() =>
               speechPlayback.toggle({
                 phraseId: selectedPhrase.id,
                 text: practiceText,
+                language: 'zh-TW',
                 speed: 'normal',
               })
             }
@@ -301,12 +305,16 @@ export function PracticePage({
             {speechPlayback.isPlaying(selectedPhrase.id, 'normal') ? t('cta.stop') : t('cta.listen')}
           </PrimaryButton>
           <PrimaryButton
+            data-speech-language="zh-TW"
+            data-speech-text={practiceText}
+            data-testid="practice-main-slow"
             icon={<Clock3 aria-hidden="true" size={18} />}
             variant="soft"
             onClick={() =>
               speechPlayback.toggle({
                 phraseId: selectedPhrase.id,
                 text: practiceText,
+                language: 'zh-TW',
                 speed: 'slow',
               })
             }
@@ -462,6 +470,7 @@ export function PracticePage({
               speechPlayback.toggle({
                 phraseId: selectedPhrase.id,
                 text: practiceText,
+                language: 'zh-TW',
                 speed: 'normal',
               })
             }

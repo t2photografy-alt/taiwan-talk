@@ -1,5 +1,7 @@
 export type SpeechPlaybackSpeed = 'normal' | 'slow';
 
+export type SpeechLanguage = 'zh-TW' | 'ja-JP';
+
 export type VoicePreference = 'auto' | 'female' | 'male';
 
 export type SpeechPlaybackCallbacks = {
@@ -10,6 +12,7 @@ export type SpeechPlaybackCallbacks = {
 
 export type SpeechPlaybackOptions = {
   speed?: SpeechPlaybackSpeed;
+  language?: SpeechLanguage;
   voicePreference?: VoicePreference;
   callbacks?: SpeechPlaybackCallbacks;
 };

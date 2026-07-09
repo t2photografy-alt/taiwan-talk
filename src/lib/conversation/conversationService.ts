@@ -99,7 +99,7 @@ function isApiResultUsable(
     return false;
   }
 
-  if (request.targetLanguage === 'zh-TW' && !result.pinyin?.trim()) {
+  if ((request.targetLanguage === 'zh-TW' || request.sourceLanguage === 'zh-TW') && !result.pinyin?.trim()) {
     return false;
   }
 

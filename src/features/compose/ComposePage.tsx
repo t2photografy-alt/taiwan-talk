@@ -4,7 +4,7 @@ import { Chip } from '../../components/Chip';
 import { Header } from '../../components/Header';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { conversationService } from '../../lib/conversation/conversationService';
-import { getMandarinText } from '../../lib/conversation/phraseDisplay';
+import { getMainSpeechTarget, getOriginalSpeechTarget } from '../../lib/conversation/phraseDisplay';
 import type {
   ConversationResult,
   LanguageDirection,
@@ -56,7 +56,8 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
     () => (result ? { ...result, category } : null),
     [category, result],
   );
-  const speechText = resultWithCategory ? getMandarinText(resultWithCategory) : '';
+  const mainSpeechTarget = resultWithCategory ? getMainSpeechTarget(resultWithCategory) : null;
+  const originalSpeechTarget = resultWithCategory ? getOriginalSpeechTarget(resultWithCategory) : null;
   const canGenerate = sourceText.trim().length > 0 && !isLoading;
 
   function selectDirection(nextDirection: LanguageDirection) {
@@ -215,15 +216,19 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
           </p>
           <div className="mt-4 grid grid-cols-2 gap-2">
             <PrimaryButton
+              data-speech-language={mainSpeechTarget?.language}
+              data-speech-text={mainSpeechTarget?.text}
+              data-testid="compose-main-listen"
               icon={<Volume2 aria-hidden="true" size={18} />}
               variant="danger"
               onClick={() => {
-                if (!resultWithCategory) {
+                if (!mainSpeechTarget) {
                   return;
                 }
                 speechPlayback.toggle({
                   phraseId: 'compose-result',
-                  text: speechText,
+                  text: mainSpeechTarget.text,
+                  language: mainSpeechTarget.language,
                   speed: 'normal',
                 });
               }}
@@ -233,15 +238,19 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
                 : t('cta.listen')}
             </PrimaryButton>
             <PrimaryButton
+              data-speech-language={mainSpeechTarget?.language}
+              data-speech-text={mainSpeechTarget?.text}
+              data-testid="compose-main-slow"
               icon={<Play aria-hidden="true" size={18} />}
               variant="soft"
               onClick={() => {
-                if (!resultWithCategory) {
+                if (!mainSpeechTarget) {
                   return;
                 }
                 speechPlayback.toggle({
                   phraseId: 'compose-result',
-                  text: speechText,
+                  text: mainSpeechTarget.text,
+                  language: mainSpeechTarget.language,
                   speed: 'slow',
                 });
               }}
@@ -250,6 +259,28 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
                 ? t('cta.stop')
                 : t('cta.slow')}
             </PrimaryButton>
+            {originalSpeechTarget ? (
+              <PrimaryButton
+                className="col-span-2"
+                data-speech-language={originalSpeechTarget.language}
+                data-speech-text={originalSpeechTarget.text}
+                data-testid="compose-original-listen"
+                icon={<Volume2 aria-hidden="true" size={18} />}
+                variant="soft"
+                onClick={() => {
+                  speechPlayback.toggle({
+                    phraseId: 'compose-original',
+                    text: originalSpeechTarget.text,
+                    language: originalSpeechTarget.language,
+                    speed: 'normal',
+                  });
+                }}
+              >
+                {speechPlayback.isPlaying('compose-original', 'normal')
+                  ? t('cta.stop')
+                  : t('cta.listenOriginal')}
+              </PrimaryButton>
+            ) : null}
             <PrimaryButton
               className="col-span-2"
               icon={<Mic2 aria-hidden="true" size={18} />}

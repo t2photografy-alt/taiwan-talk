@@ -27,6 +27,11 @@ export type Phrase = {
   resultText: string;
   sourceLanguage: LanguageCode;
   targetLanguage: LanguageCode;
+  /**
+   * Pinyin for the Taiwanese Mandarin text in the phrase pair.
+   * ja-to-zh-TW: pinyin for resultText.
+   * zh-TW-to-ja: pinyin for sourceText.
+   */
   pinyin?: string;
   tone: Tone;
   category: PhraseCategory;

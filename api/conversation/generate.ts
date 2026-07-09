@@ -223,7 +223,8 @@ function buildPrompt(request: GenerateConversationRequest) {
     '台湾華語は必ず繁体字で出し、中国大陸向け簡体字にしないでください。',
     '日本語直訳っぽさを減らし、カジュアルすぎて失礼にならない表現にしてください。',
     '政治的表現、国旗、国家論争には寄せないでください。',
-    'pinyinは必ずresultTextと対応させ、声調記号付きで出してください。日本語出力の場合はpinyinをnullにしてください。',
+    'targetLanguage が zh-TW の場合、resultText は繁体字の台湾華語にし、pinyin は resultText の読みを声調記号付きで返してください。',
+    'targetLanguage が ja の場合、resultText は自然な日本語にし、pinyin は sourceText の台湾華語の読みを声調記号付きで返してください。日本語 resultText に対して pinyin を作らないでください。',
     '生成結果は短く、対面でスマホ画面を見せる場合にも、SNS/DMで送る場合にも読みやすくしてください。代替案は最大2件です。',
     "needsNativeCheckは必ずtrue、reviewStatusは必ず'needs-native-check'です。ネイティブ確認済みとは書かないでください。",
     buildModeInstructions(request),
@@ -333,7 +334,7 @@ function validateGeneratedResult(
     return 'review status mismatch';
   }
 
-  if (request.targetLanguage === 'zh-TW' && !result.pinyin?.trim()) {
+  if ((request.targetLanguage === 'zh-TW' || request.sourceLanguage === 'zh-TW') && !result.pinyin?.trim()) {
     return 'pinyin is missing';
   }
 

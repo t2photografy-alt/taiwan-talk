@@ -126,6 +126,7 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
 
   const handleSpeechTest = () => {
     const result = speechService.speak(SPEECH_TEST_TEXT, {
+      language: 'zh-TW',
       voicePreference,
       callbacks: {
         onError: () => {

@@ -30,6 +30,7 @@ export type TranslationKey =
   | 'page.settings.title'
   | 'page.settings.subtitle'
   | 'cta.listen'
+  | 'cta.listenOriginal'
   | 'cta.slow'
   | 'cta.slowListen'
   | 'cta.stop'
