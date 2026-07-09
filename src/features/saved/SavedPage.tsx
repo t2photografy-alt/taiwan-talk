@@ -3,9 +3,9 @@ import { Clipboard, Maximize2, Mic2, Search, Trash2 } from 'lucide-react';
 import { Chip } from '../../components/Chip';
 import { Header } from '../../components/Header';
 import { PrimaryButton } from '../../components/PrimaryButton';
-import { categoryLabels } from '../../data/presets';
 import type { Phrase, PhraseCategory } from '../../lib/conversation/types';
 import { useDisplayLanguage } from '../../lib/displayLanguage/DisplayLanguageProvider';
+import type { TranslationKey } from '../../lib/displayLanguage/types';
 
 type SavedPageProps = {
   savedPhrases: Phrase[];
@@ -28,9 +28,16 @@ const categoryFilters: Array<PhraseCategory | 'all'> = [
   'other',
 ];
 
-const filterLabels: Record<PhraseCategory | 'all', string> = {
-  all: '全部',
-  ...categoryLabels,
+const filterLabelKeys: Record<PhraseCategory | 'all', TranslationKey> = {
+  all: 'category.all',
+  greeting: 'category.greeting',
+  thanks: 'category.thanks',
+  photo: 'category.photo',
+  event: 'category.event',
+  oshi: 'category.oshi',
+  dm: 'category.dm',
+  seeAgain: 'category.seeAgain',
+  other: 'category.other',
 };
 
 export function SavedPage({
@@ -76,7 +83,7 @@ export function SavedPage({
           <input
             className="min-h-11 w-full bg-transparent text-base font-bold text-[#141821] outline-none placeholder:text-[#98a2b3]"
             id="saved-search"
-            placeholder="保存フレーズを検索"
+            placeholder={t('saved.searchPlaceholder')}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -86,19 +93,19 @@ export function SavedPage({
       <section className="mb-4 flex gap-2 overflow-x-auto pb-1">
         {categoryFilters.map((item) => (
           <Chip key={item} selected={category === item} className="shrink-0" onClick={() => setCategory(item)}>
-            {filterLabels[item]}
+            {t(filterLabelKeys[item])}
           </Chip>
         ))}
       </section>
 
       {filteredPhrases.length === 0 ? (
         <section className="glass-card rounded-[22px] p-6 text-center">
-          <h2 className="text-lg font-black text-[#141821]">まだ保存がありません</h2>
+          <h2 className="text-lg font-black text-[#141821]">{t('saved.emptyTitle')}</h2>
           <p className="mt-2 text-sm font-bold leading-relaxed text-[#667085]">
-            作る画面で自然な言い方を作って保存すると、ここからすぐ見返せます。
+            {t('saved.emptyText')}
           </p>
           <PrimaryButton className="mt-4" variant="blue" onClick={() => onNavigate('/compose')}>
-            作るへ
+            {t('saved.goCompose')}
           </PrimaryButton>
         </section>
       ) : (
@@ -108,7 +115,7 @@ export function SavedPage({
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <span className="rounded-full bg-[#eef6ff] px-3 py-1 text-xs font-black text-[var(--brand-blue)]">
-                    {categoryLabels[phrase.category]}
+                    {t(filterLabelKeys[phrase.category])}
                   </span>
                   <h2
                     className="mt-3 whitespace-pre-line text-[22px] font-black leading-tight tracking-normal text-[var(--brand-red)]"
@@ -140,7 +147,7 @@ export function SavedPage({
                   variant="soft"
                   onClick={() => onCopy(phrase.resultText)}
                 >
-                  コピー
+                  {t('cta.copy')}
                 </PrimaryButton>
                 <PrimaryButton
                   data-testid="phrase-display-button"
@@ -163,7 +170,7 @@ export function SavedPage({
                   variant="danger"
                   onClick={() => onDelete(phrase)}
                 >
-                  削除
+                  {t('cta.delete')}
                 </PrimaryButton>
               </div>
             </article>

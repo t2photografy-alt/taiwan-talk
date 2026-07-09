@@ -40,27 +40,37 @@ test('390px主要画面の目視確認用スクリーンショットを保存す
   await page.goto('/');
   await page.evaluate(() => window.localStorage.clear());
   await expect(page.getByText('おすすめフレーズ')).toBeVisible();
+  await page.waitForTimeout(250);
   await page.screenshot({ fullPage: true, path: resolve(outputDir, '00-home.png') });
 
   await page.goto('/compose');
-  await expect(page.getByText('友達トーンの台湾華語')).toBeVisible();
+  await page.getByTestId('compose-input').fill('また写真撮らせてください！');
+  await page.getByTestId('compose-generate-button').click();
+  await expect(page.getByText('自然な台湾華語')).toBeVisible({ timeout: 60_000 });
+  await page.waitForTimeout(250);
   await page.screenshot({ fullPage: true, path: resolve(outputDir, '01-compose.png') });
 
   await page.goto('/messages');
-  await expect(page.getByText('だいたいの意味')).toBeVisible();
+  await page.getByTestId('messages-input').fill('下次也一起玩吧～');
+  await page.getByRole('button', { name: '意味を確認' }).click();
+  await expect(page.getByText('だいたいの意味')).toBeVisible({ timeout: 60_000 });
+  await page.waitForTimeout(250);
   await page.screenshot({ fullPage: true, path: resolve(outputDir, '02-messages.png') });
 
   await page.goto('/practice');
   await expect(page.getByText('今日のフレーズ')).toBeVisible();
+  await page.waitForTimeout(250);
   await page.screenshot({ fullPage: true, path: resolve(outputDir, '03-practice.png') });
 
   await seedSavedPhrase(page);
   await page.goto('/saved');
   await expect(page.getByText('我們一起拍照吧！')).toBeVisible();
+  await page.waitForTimeout(250);
   await page.screenshot({ fullPage: true, path: resolve(outputDir, '04-saved.png') });
 
   await page.goto('/display/preset-see-you-long-time');
   await expect(page.getByText('好久不見～')).toBeVisible();
+  await page.waitForTimeout(250);
   await page.screenshot({ fullPage: true, path: resolve(outputDir, '05-display.png') });
 
   await page.goto('/settings');
@@ -68,5 +78,25 @@ test('390px主要画面の目視確認用スクリーンショットを保存す
   await expect(page.getByText('表示', { exact: true })).toBeVisible();
   await expect(page.getByText('音声設定')).toBeVisible();
   await expect(page.getByText('端末チェック')).toBeVisible();
+  await page.waitForTimeout(250);
   await page.screenshot({ fullPage: true, path: resolve(outputDir, '06-settings.png') });
+
+  await page.getByRole('button', { name: '台灣華語' }).click();
+  await page.goto('/');
+  await expect(page.getByRole('button', { name: '使用' })).toBeVisible();
+  await page.waitForTimeout(250);
+  await page.screenshot({ fullPage: true, path: resolve(outputDir, '07-home-zh-display.png') });
+
+  await page.getByRole('button', { name: '台灣華語 → 日文' }).click();
+  await expect(page.getByRole('button', { name: '台灣華語 → 日文' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByText('久しぶり〜ほんと会いたかったよ！')).toBeVisible();
+  await page.waitForTimeout(250);
+  await page.screenshot({ fullPage: true, path: resolve(outputDir, '08-home-zh-to-ja.png') });
+
+  await page.goto('/compose');
+  await page.getByRole('button', { name: '從台灣華語' }).click();
+  await expect(page.getByRole('button', { name: '從台灣華語' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('compose-input')).toHaveAttribute('placeholder', '例：下次也一起玩吧～');
+  await page.waitForTimeout(250);
+  await page.screenshot({ fullPage: true, path: resolve(outputDir, '09-compose-zh-to-ja.png') });
 });

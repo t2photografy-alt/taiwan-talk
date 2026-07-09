@@ -16,7 +16,7 @@ type SettingsPageProps = {
   onNavigate: (path: string) => void;
 };
 
-const SPEECH_TEST_TEXT = '你好，這是 Taiwan Talk 的音聲測試。';
+const SPEECH_TEST_TEXT = '你好，這是 Taiwan Talk 的聲音測試。';
 const voicePreferenceOptions: Array<{ value: VoicePreference; labelKey: TranslationKey }> = [
   { value: 'auto', labelKey: 'settings.voiceAuto' },
   { value: 'female', labelKey: 'settings.voiceFemale' },
@@ -24,8 +24,8 @@ const voicePreferenceOptions: Array<{ value: VoicePreference; labelKey: Translat
 ];
 type TFunction = (key: TranslationKey) => string;
 
-function capabilityLabel(isSupported: boolean) {
-  return isSupported ? '対応' : '未対応';
+function capabilityLabel(isSupported: boolean, t: TFunction) {
+  return isSupported ? t('settings.supported') : t('settings.unsupported');
 }
 
 function supportTone(isSupported: boolean) {
@@ -34,46 +34,46 @@ function supportTone(isSupported: boolean) {
 
 function microphoneLabel(capabilities: DeviceCapabilitySnapshot) {
   if (capabilities.microphonePermission === 'granted') {
-    return '確認済み';
+    return 'settings.checked';
   }
 
   if (capabilities.microphonePermission === 'unavailable') {
-    return '使えない可能性';
+    return 'settings.maybeUnavailable';
   }
 
-  return '許可が必要';
+  return 'settings.permissionNeeded';
 }
 
 function statusLabel(capabilities: DeviceCapabilitySnapshot, t: TFunction) {
   return [
     {
       label: t('settings.speech'),
-      value: capabilityLabel(capabilities.speechSynthesis === 'supported'),
+      value: capabilityLabel(capabilities.speechSynthesis === 'supported', t),
       tone: supportTone(capabilities.speechSynthesis === 'supported'),
     },
     {
       label: t('settings.recording'),
-      value: capabilityLabel(capabilities.recording === 'supported'),
+      value: capabilityLabel(capabilities.recording === 'supported', t),
       tone: supportTone(capabilities.recording === 'supported'),
     },
     {
       label: t('settings.microphone'),
-      value: microphoneLabel(capabilities),
+      value: t(microphoneLabel(capabilities) as TranslationKey),
       tone: capabilities.microphonePermission === 'unavailable' ? 'text-[#b42318]' : 'text-[#344054]',
     },
     {
       label: t('settings.storage'),
-      value: capabilities.localStorage === 'supported' ? '端末内保存に対応' : '未対応',
+      value: capabilities.localStorage === 'supported' ? t('settings.localStorageSupported') : t('settings.unsupported'),
       tone: supportTone(capabilities.localStorage === 'supported'),
     },
     {
       label: t('settings.displayMode'),
-      value: capabilities.displayMode === 'standalone' ? 'ホーム追加表示' : 'ブラウザ',
+      value: capabilities.displayMode === 'standalone' ? t('settings.homeMode') : t('settings.browserMode'),
       tone: 'text-[#344054]',
     },
     {
       label: t('settings.network'),
-      value: capabilities.networkStatus === 'offline' ? 'オフライン' : 'オンライン',
+      value: capabilities.networkStatus === 'offline' ? t('settings.offline') : t('settings.online'),
       tone: capabilities.networkStatus === 'offline' ? 'text-[#b42318]' : 'text-emerald-700',
     },
   ];
@@ -83,8 +83,8 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
   const [capabilities, setCapabilities] = useState<DeviceCapabilitySnapshot>(() =>
     deviceCapabilities.getInitialSnapshot(),
   );
-  const [audioStatus, setAudioStatus] = useState('未実行');
-  const [recordingStatus, setRecordingStatus] = useState('未実行');
+  const [audioStatusKey, setAudioStatusKey] = useState<TranslationKey>('settings.notRun');
+  const [recordingStatusKey, setRecordingStatusKey] = useState<TranslationKey>('settings.notRun');
   const [isRecording, setIsRecording] = useState(false);
   const [recordedAudio, setRecordedAudio] = useState<RecordedAudio | null>(null);
   const [voicePreference, setVoicePreference] = useState<VoicePreference>(() => readVoicePreference());
@@ -129,15 +129,15 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
       voicePreference,
       callbacks: {
         onError: () => {
-          setAudioStatus('この端末では音声再生が使えない可能性があります');
+          setAudioStatusKey('settings.speechUnavailable');
         },
       },
     });
 
     if (result.ok) {
-      setAudioStatus('音声テストを再生しました');
+      setAudioStatusKey('settings.speechPlayed');
     } else {
-      setAudioStatus('この端末では音声再生が使えない可能性があります');
+      setAudioStatusKey('settings.speechUnavailable');
     }
 
     void refreshCapabilities();
@@ -147,7 +147,7 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
     const session = recorderSessionRef.current;
 
     if (!session) {
-      setRecordingStatus('録音を開始できていません');
+      setRecordingStatusKey('settings.recordingNotStarted');
       setIsRecording(false);
       return;
     }
@@ -155,9 +155,9 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
     try {
       const recording = await session.stop();
       setRecordedAudio(recording);
-      setRecordingStatus('録音できました');
+      setRecordingStatusKey('settings.recordingDone');
     } catch {
-      setRecordingStatus('録音を停止できませんでした。もう一度お試しください。');
+      setRecordingStatusKey('settings.recordingStopFailed');
     } finally {
       recorderSessionRef.current = null;
       setIsRecording(false);
@@ -173,12 +173,12 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
 
     recorderService.releaseRecording(recordedAudio);
     setRecordedAudio(null);
-    setRecordingStatus('マイク許可を確認しています');
+    setRecordingStatusKey('settings.checkingMic');
 
     const result = await recorderService.startRecording();
 
     if (!result.ok) {
-      setRecordingStatus(result.error.message);
+      setRecordingStatusKey('settings.maybeUnavailable');
       setIsRecording(false);
       void refreshCapabilities();
       return;
@@ -186,19 +186,19 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
 
     recorderSessionRef.current = result.session;
     setIsRecording(true);
-    setRecordingStatus('録音中');
+    setRecordingStatusKey('practice.recording');
     void refreshCapabilities();
   };
 
   const playRecordedAudio = () => {
     if (!recordedAudio) {
-      setRecordingStatus('聞き返す録音がありません');
+      setRecordingStatusKey('settings.noRecording');
       return;
     }
 
     const audio = new Audio(recordedAudio.url);
     void audio.play().catch(() => {
-      setRecordingStatus('録音音声を再生できませんでした');
+      setRecordingStatusKey('settings.recordingPlaybackFailed');
     });
   };
 
@@ -219,22 +219,20 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
         <article className="glass-card rounded-[20px] p-4">
           <div className="mb-2 flex items-center gap-2">
             <ShieldCheck aria-hidden="true" className="text-[var(--brand-blue)]" size={20} />
-            <h2 className="text-base font-black text-[#141821]">このアプリについて</h2>
+            <h2 className="text-base font-black text-[#141821]">{t('settings.aboutTitle')}</h2>
           </div>
           <p className="text-sm font-bold leading-relaxed text-[#344054]">
-            Taiwan Talk は、台湾華語と日本語の自然な会話を助ける、非公式の会話サポートアプリです。
-            完璧な翻訳保証ではなく、気持ちを伝えるきっかけを作るための補助です。
+            {t('settings.aboutBody')}
           </p>
         </article>
 
         <article className="glass-card rounded-[20px] p-4">
           <div className="mb-2 flex items-center gap-2">
             <Sparkles aria-hidden="true" className="text-[var(--brand-red)]" size={20} />
-            <h2 className="text-base font-black text-[#141821]">保存データと今後</h2>
+            <h2 className="text-base font-black text-[#141821]">{t('settings.storageTitle')}</h2>
           </div>
           <p className="text-sm font-bold leading-relaxed text-[#344054]">
-            初回実装では、保存したフレーズはこの端末のブラウザ内に置かれます。
-            将来はAI生成、音声認識、Supabase連携へ差し替えられる構造にしています。
+            {t('settings.storageBody')}
           </p>
         </article>
 
@@ -308,7 +306,7 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
             </PrimaryButton>
             {recordedAudio ? (
               <PrimaryButton icon={<Volume2 aria-hidden="true" size={18} />} variant="ghost" onClick={playRecordedAudio}>
-                録音を聞く
+                {t('settings.recordingPlayback')}
               </PrimaryButton>
             ) : null}
             <PrimaryButton
@@ -321,22 +319,20 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
           </div>
 
           <div className="mt-3 rounded-[14px] bg-[#f9fbff] px-3 py-2 text-xs font-bold leading-relaxed text-[#667085]">
-            <p>音声：{audioStatus}</p>
-            <p>録音：{recordingStatus}</p>
+            <p>{t('settings.speech')}：{t(audioStatusKey)}</p>
+            <p>{t('settings.recording')}：{t(recordingStatusKey)}</p>
           </div>
         </article>
 
         <article className="rounded-[18px] border border-[#d9e1ee] bg-[#f9fbff] p-4">
           <p className="text-sm font-bold leading-relaxed text-[#667085]">
-            現在は開発中のため、AI生成結果と発音チェック結果は確認前の表示です。
-            API key未設定時の生成、音声再生、録音はブラウザ機能や仮実装を使います。
-            台湾華語の表現は、今後ネイティブ確認を入れて調整予定です。
+            {t('settings.mockNote')}
           </p>
         </article>
       </section>
 
       <PrimaryButton className="mt-5" fullWidth variant="blue" onClick={() => onNavigate('/')}>
-        使うへ戻る
+        {t('settings.backHome')}
       </PrimaryButton>
     </div>
   );

@@ -1,6 +1,7 @@
 import { ArrowLeft, Bookmark, Check, Clipboard, Mic2 } from 'lucide-react';
 import { DarumaLogo } from '../../components/DarumaLogo';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { getDisplayMainText, getDisplaySupportText } from '../../lib/conversation/phraseDisplay';
 import type { Phrase } from '../../lib/conversation/types';
 import { useDisplayLanguage } from '../../lib/displayLanguage/DisplayLanguageProvider';
 
@@ -19,9 +20,9 @@ export function DisplayPage({ phrase, isSaved, onBack, onCopy, onSave, onPractic
   if (!phrase) {
     return (
       <div className="flex min-h-[72dvh] flex-col items-center justify-center text-center">
-        <h1 className="text-xl font-black text-[#141821]">フレーズが見つかりません</h1>
+        <h1 className="text-xl font-black text-[#141821]">{t('display.notFound')}</h1>
         <PrimaryButton className="mt-5" variant="blue" onClick={onBack}>
-          戻る
+          {t('cta.back')}
         </PrimaryButton>
       </div>
     );
@@ -31,7 +32,7 @@ export function DisplayPage({ phrase, isSaved, onBack, onCopy, onSave, onPractic
     <div className="flex min-h-[calc(100dvh-52px)] flex-col">
       <header className="mb-5 flex items-center justify-between">
         <button
-          aria-label="戻る"
+          aria-label={t('cta.back')}
           className="grid h-11 w-11 place-items-center rounded-full border border-[#d9e1ee] bg-white text-[#141821] shadow-[0_10px_24px_rgba(18,35,64,0.08)]"
           type="button"
           onClick={onBack}
@@ -56,13 +57,13 @@ export function DisplayPage({ phrase, isSaved, onBack, onCopy, onSave, onPractic
             ].join(' ')}
           >
             {isSaved ? <Check aria-hidden="true" size={14} /> : <Bookmark aria-hidden="true" size={14} />}
-            {isSaved ? t('cta.saved') : 'まだ保存していません'}
+            {isSaved ? t('cta.saved') : t('display.notSaved')}
           </span>
           <h1
             className="display-kanji whitespace-pre-line font-black tracking-normal text-[#141821]"
             data-testid="display-result-text"
           >
-            {phrase.resultText}
+            {getDisplayMainText(phrase)}
           </h1>
           {phrase.pinyin ? (
             <p className="mt-6 whitespace-pre-line text-lg font-bold leading-relaxed text-[var(--brand-blue)]">
@@ -73,7 +74,7 @@ export function DisplayPage({ phrase, isSaved, onBack, onCopy, onSave, onPractic
             className="mt-6 rounded-[18px] bg-[#f3f6fb] p-4 text-base font-bold leading-relaxed text-[#344054]"
             data-testid="display-source-text"
           >
-            {phrase.sourceText}
+            {getDisplaySupportText(phrase)}
           </p>
         </section>
       </main>
@@ -84,7 +85,7 @@ export function DisplayPage({ phrase, isSaved, onBack, onCopy, onSave, onPractic
           variant="soft"
           onClick={() => onCopy(phrase.resultText)}
         >
-          コピー
+          {t('cta.copy')}
         </PrimaryButton>
         <PrimaryButton
           icon={<Bookmark aria-hidden="true" size={18} />}

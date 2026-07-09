@@ -103,8 +103,8 @@ export default function App() {
       }
 
       return (
-        savedPhrases.find((phrase) => phrase.id === id) ??
         (draftDisplayPhrase?.id === id ? draftDisplayPhrase : undefined) ??
+        savedPhrases.find((phrase) => phrase.id === id) ??
         presetPhrases.find((phrase) => phrase.id === id)
       );
     },
@@ -148,7 +148,7 @@ export default function App() {
 
   const displayPhrase = useCallback(
     (phrase: Phrase) => {
-      setDraftDisplayPhrase(null);
+      setDraftDisplayPhrase(phrase);
       navigate(`/display/${encodeURIComponent(phrase.id)}`);
     },
     [navigate],

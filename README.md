@@ -79,6 +79,14 @@ It is not an event-only app. Event conversations are one representative use case
 - The review keeps Taiwan Talk's app fit broad: face-to-face, SNS/DM, photo exchanges, greetings after meeting again, thanks, light invitations, gentle declines, and replies
 - Even when a case is marked 仮OK, generated Taiwan Mandarin is not native-approved
 
+## Display Language And Conversation Direction
+
+- Display language changes app UI labels between Japanese and Taiwan Mandarin.
+- Conversation direction changes the phrase direction: Japanese → Taiwan Mandarin or Taiwan Mandarin → Japanese.
+- These are separate concepts. Taiwan Mandarin UI can still create Japanese → Taiwan Mandarin phrases, and Japanese UI can still create Taiwan Mandarin → Japanese phrases.
+- Input fields start empty by default; examples are shown as placeholders.
+- Taiwan Mandarin UI labels are still review targets and are not native-approved.
+
 ## Tech Stack
 
 - React

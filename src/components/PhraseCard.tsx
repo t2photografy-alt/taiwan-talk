@@ -9,6 +9,7 @@ import {
   Volume2,
 } from 'lucide-react';
 import type { Phrase } from '../lib/conversation/types';
+import { getMandarinText } from '../lib/conversation/phraseDisplay';
 import { useDisplayLanguage } from '../lib/displayLanguage/DisplayLanguageProvider';
 import { useSpeechPlayback } from '../lib/speech/useSpeechPlayback';
 import { PrimaryButton } from './PrimaryButton';
@@ -26,7 +27,7 @@ type PhraseCardProps = {
 
 export function PhraseCard({
   phrase,
-  label = 'おすすめ',
+  label,
   compact = false,
   saved = false,
   onDisplay,
@@ -36,6 +37,8 @@ export function PhraseCard({
 }: PhraseCardProps) {
   const { t } = useDisplayLanguage();
   const speechPlayback = useSpeechPlayback();
+  const cardLabel = label ?? t('compose.recommended');
+  const speechText = getMandarinText(phrase);
   const isNormalPlaying = speechPlayback.isPlaying(phrase.id, 'normal');
   const isSlowPlaying = speechPlayback.isPlaying(phrase.id, 'slow');
 
@@ -69,7 +72,7 @@ export function PhraseCard({
     <article className="phrase-hero rounded-[22px] p-4">
       <div className="mb-3 flex items-start justify-between gap-3">
         <span className="rounded-full bg-[var(--brand-red)] px-3 py-1 text-xs font-black text-white">
-          {label}
+          {cardLabel}
         </span>
         <button
           aria-label={phrase.isFavorite ? 'お気に入り解除' : 'お気に入り'}
@@ -103,14 +106,14 @@ export function PhraseCard({
         <PrimaryButton
           icon={<Volume2 aria-hidden="true" size={18} />}
           variant="danger"
-          onClick={() => speechPlayback.toggle({ phraseId: phrase.id, text: phrase.resultText, speed: 'normal' })}
+          onClick={() => speechPlayback.toggle({ phraseId: phrase.id, text: speechText, speed: 'normal' })}
         >
           {isNormalPlaying ? t('cta.stop') : t('cta.listen')}
         </PrimaryButton>
         <PrimaryButton
           icon={<Clock3 aria-hidden="true" size={18} />}
           variant="soft"
-          onClick={() => speechPlayback.toggle({ phraseId: phrase.id, text: phrase.resultText, speed: 'slow' })}
+          onClick={() => speechPlayback.toggle({ phraseId: phrase.id, text: speechText, speed: 'slow' })}
         >
           {isSlowPlaying ? t('cta.stop') : t('cta.slow')}
         </PrimaryButton>

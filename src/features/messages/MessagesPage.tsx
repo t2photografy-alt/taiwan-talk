@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Clipboard, Maximize2, MessageCircle, Send, Sparkles } from 'lucide-react';
 import { Chip } from '../../components/Chip';
 import { Header } from '../../components/Header';
@@ -10,6 +10,7 @@ import type {
   ReplyIntent,
 } from '../../lib/conversation/types';
 import { useDisplayLanguage } from '../../lib/displayLanguage/DisplayLanguageProvider';
+import type { TranslationKey } from '../../lib/displayLanguage/types';
 
 type MessagesPageProps = {
   onNavigate: (path: string) => void;
@@ -18,13 +19,13 @@ type MessagesPageProps = {
   onCopy: (text: string) => void;
 };
 
-const replyIntents: Array<{ id: ReplyIntent; label: string }> = [
-  { id: 'happy', label: 'うれしい' },
-  { id: 'thanks', label: 'ありがとう' },
-  { id: 'seeAgain', label: 'また会いたい' },
-  { id: 'askSchedule', label: '予定を聞きたい' },
-  { id: 'softDecline', label: 'やんわり断る' },
-  { id: 'sendPhoto', label: '写真を送る' },
+const replyIntents: Array<{ id: ReplyIntent; labelKey: TranslationKey }> = [
+  { id: 'happy', labelKey: 'intent.happy' },
+  { id: 'thanks', labelKey: 'intent.thanks' },
+  { id: 'seeAgain', labelKey: 'intent.seeAgain' },
+  { id: 'askSchedule', labelKey: 'intent.askSchedule' },
+  { id: 'softDecline', labelKey: 'intent.softDecline' },
+  { id: 'sendPhoto', labelKey: 'intent.sendPhoto' },
 ];
 
 export function MessagesPage({
@@ -33,7 +34,7 @@ export function MessagesPage({
   onDisplayResult,
   onCopy,
 }: MessagesPageProps) {
-  const [incomingText, setIncomingText] = useState('謝謝你今天來看表演～');
+  const [incomingText, setIncomingText] = useState('');
   const [analysis, setAnalysis] = useState<MessageAnalysis | null>(null);
   const [intent, setIntent] = useState<ReplyIntent>('happy');
   const [reply, setReply] = useState<ConversationResult | null>(null);
@@ -64,18 +65,13 @@ export function MessagesPage({
     }
   }
 
-  useEffect(() => {
-    void analyze();
-    void createReply('happy');
-  }, []);
-
   async function saveReply() {
     if (!reply) {
       return;
     }
 
     await onSaveResult(reply);
-    setNotice('返信候補を保存しました');
+    setNotice(t('messages.savedNotice'));
   }
 
   return (
@@ -88,15 +84,21 @@ export function MessagesPage({
 
       <section className="mb-4">
         <label className="mb-2 block text-sm font-black text-[#141821]" htmlFor="message-source">
-          相手から来たメッセージ
+          {t('messages.inputLabel')}
         </label>
         <div className="glass-card rounded-[18px] p-3">
           <textarea
-            className="min-h-24 w-full resize-none bg-transparent text-[17px] font-bold leading-relaxed text-[#141821] outline-none"
+            className="min-h-24 w-full resize-none bg-transparent text-[17px] font-bold leading-relaxed text-[#141821] outline-none placeholder:text-[#98a2b3]"
             data-testid="messages-input"
             id="message-source"
+            placeholder={t('messages.placeholder')}
             value={incomingText}
-            onChange={(event) => setIncomingText(event.target.value)}
+            onChange={(event) => {
+              setIncomingText(event.target.value);
+              setAnalysis(null);
+              setReply(null);
+              setNotice('');
+            }}
           />
         </div>
         <PrimaryButton
@@ -109,7 +111,7 @@ export function MessagesPage({
             void createReply();
           }}
         >
-          意味を確認
+          {t('messages.checkMeaning')}
         </PrimaryButton>
       </section>
 
@@ -117,7 +119,7 @@ export function MessagesPage({
         <section className="soft-blue mb-4 rounded-[18px] p-4">
           <div className="mb-2 flex items-center gap-2">
             <MessageCircle aria-hidden="true" className="text-[var(--brand-blue)]" size={20} />
-            <h2 className="text-sm font-black text-[#141821]">だいたいの意味</h2>
+            <h2 className="text-sm font-black text-[#141821]">{t('messages.meaning')}</h2>
           </div>
           <p className="text-[17px] font-black leading-relaxed text-[#141821]">{analysis.summaryJa}</p>
           <p className="mt-2 text-sm font-bold leading-relaxed text-[#344054]">{analysis.nuance}</p>
@@ -131,7 +133,7 @@ export function MessagesPage({
       ) : null}
 
       <section className="mb-4">
-        <h2 className="mb-2 text-sm font-black text-[#141821]">返信方針</h2>
+        <h2 className="mb-2 text-sm font-black text-[#141821]">{t('messages.replyPolicy')}</h2>
         <div className="flex flex-wrap gap-2">
           {replyIntents.map((item) => (
             <Chip
@@ -142,7 +144,7 @@ export function MessagesPage({
                 void createReply(item.id);
               }}
             >
-              {item.label}
+              {t(item.labelKey)}
             </Chip>
           ))}
         </div>
@@ -151,9 +153,9 @@ export function MessagesPage({
       {reply ? (
         <section className="phrase-hero rounded-[22px] p-4" data-testid="messages-reply-card">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-black text-[#141821]">返信候補</h2>
+            <h2 className="text-sm font-black text-[#141821]">{t('messages.replyCandidate')}</h2>
             <span className="rounded-full bg-[var(--brand-red)] px-3 py-1 text-xs font-black text-white">
-              DM向け
+              {t('messages.dm')}
             </span>
           </div>
           <p
@@ -182,7 +184,7 @@ export function MessagesPage({
               variant="soft"
               onClick={() => onCopy(reply.resultText)}
             >
-              コピー
+              {t('cta.copy')}
             </PrimaryButton>
             <PrimaryButton
               data-testid="messages-save-button"

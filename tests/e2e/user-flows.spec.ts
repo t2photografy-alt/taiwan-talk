@@ -280,6 +280,8 @@ async function expectNativeCheckFromApiIfAvailable(response: Response | null) {
     result?: {
       resultText?: unknown;
       pinyin?: unknown;
+      sourceLanguage?: unknown;
+      targetLanguage?: unknown;
       needsNativeCheck?: unknown;
       reviewStatus?: unknown;
     };
@@ -287,9 +289,29 @@ async function expectNativeCheckFromApiIfAvailable(response: Response | null) {
 
   expect(payload.ok).toBe(true);
   expect(payload.result?.resultText).toEqual(expect.any(String));
-  expect(payload.result?.pinyin).toEqual(expect.any(String));
+  if (payload.result?.targetLanguage !== 'ja') {
+    expect(payload.result?.pinyin).toEqual(expect.any(String));
+  }
   expect(payload.result?.needsNativeCheck).toBe(true);
   expect(payload.result?.reviewStatus).toBe('needs-native-check');
+}
+
+async function expectGenerationRequestLanguages(
+  response: Response | null,
+  sourceLanguage: 'ja' | 'zh-TW',
+  targetLanguage: 'ja' | 'zh-TW',
+) {
+  if (!response) {
+    return;
+  }
+
+  const requestBody = response.request().postDataJSON() as {
+    sourceLanguage?: string;
+    targetLanguage?: string;
+  };
+
+  expect(requestBody.sourceLanguage).toBe(sourceLanguage);
+  expect(requestBody.targetLanguage).toBe(targetLanguage);
 }
 
 async function readGeneratedTaiwanText(locator: Locator) {
@@ -304,6 +326,8 @@ async function readGeneratedTaiwanText(locator: Locator) {
 
 async function createAndSavePhotoPhrase(page: Page) {
   await page.goto('/compose');
+  await expect(page.getByTestId('compose-input')).toHaveValue('');
+  await expect(page.getByTestId('compose-input')).toHaveAttribute('placeholder', '例：また写真撮らせてください！');
   await page.getByTestId('compose-input').fill(photoInput);
   const responsePromise = waitForMaybeGenerationResponse(page);
   await page.getByTestId('compose-generate-button').click();
@@ -331,6 +355,8 @@ test.beforeEach(async ({ page }) => {
 test('Flow A: 使う画面から大きく表示して戻れる', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByText('おすすめフレーズ')).toBeVisible();
+  await expect(page.getByRole('button', { name: '日本語 → 台湾華語' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: '台湾華語 → 日本語' })).toBeVisible();
   await expect(page.getByText('好久不見～')).toBeVisible();
   await expectLogoHealthy(page);
   await expectBottomNavVisible(page);
@@ -359,6 +385,13 @@ test('Flow A: 使う画面から大きく表示して戻れる', async ({ page }
   await page.getByRole('button', { name: '戻る' }).click();
   await expect(page).toHaveURL('/');
   await expect(page.getByText('おすすめフレーズ')).toBeVisible();
+
+  await page.getByRole('button', { name: '台湾華語 → 日本語' }).click();
+  await expect(page.getByRole('button', { name: '台湾華語 → 日本語' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByText('終於又見到你了，真的很開心！')).toBeVisible();
+  await page.getByRole('button', { name: '大きく表示' }).first().click();
+  await expect(page.getByTestId('display-result-text')).toContainText('久しぶり');
+  await expect(page.getByTestId('display-source-text')).toContainText('好久不見');
 });
 
 test('Flow B: 作るから保存して保存画面で検索できる', async ({ page }) => {
@@ -397,6 +430,46 @@ test('Flow C: 保存フレーズを大きく表示して練習へ進める', asy
   await expectPageChromeHealthy(page);
 });
 
+test('作る画面: 台湾華語から日本語へ生成して保存・表示・練習へ進める', async ({ page }) => {
+  const taiwanText = '下次也一起玩吧～';
+
+  await page.goto('/compose');
+  await page.getByRole('button', { name: '台湾華語から' }).click();
+  await expect(page.getByTestId('compose-input')).toHaveValue('');
+  await expect(page.getByTestId('compose-input')).toHaveAttribute('placeholder', '例：下次也一起玩吧～');
+  await page.getByTestId('compose-input').fill(taiwanText);
+
+  const responsePromise = waitForMaybeGenerationResponse(page);
+  await page.getByTestId('compose-generate-button').click();
+  const response = await responsePromise;
+  await expectGenerationRequestLanguages(response, 'zh-TW', 'ja');
+  await expectNativeCheckFromApiIfAvailable(response);
+
+  await expect(page.getByTestId('compose-result-source')).toContainText(taiwanText, {
+    timeout: generationWaitMs,
+  });
+  const japaneseResult = normalizeText(await page.getByTestId('compose-result-text').innerText());
+  expect(japaneseResult).not.toBe('');
+  expect(japaneseResult).toMatch(/[ぁ-んァ-ン一-龯]/);
+
+  await page.getByTestId('compose-save-button').click();
+  await expect(page.getByText('保存しました')).toBeVisible();
+
+  await page.goto('/saved');
+  const savedCard = page.getByTestId('saved-phrase-card').first();
+  await expect(savedCard.getByTestId('saved-phrase-source')).toContainText(taiwanText);
+  await expect(savedCard.getByTestId('saved-phrase-result')).toContainText(japaneseResult);
+
+  await savedCard.getByTestId('phrase-display-button').click();
+  await expect(page.getByTestId('display-result-text')).toContainText(japaneseResult);
+  await expect(page.getByTestId('display-source-text')).toContainText(taiwanText);
+
+  await page.getByTestId('display-practice-button').click();
+  await expect(page).toHaveURL(/\/practice\?phrase=phrase-/);
+  await expect(page.getByTestId('practice-phrase-text')).toContainText(taiwanText);
+  await expectPageChromeHealthy(page);
+});
+
 test('Flow D: 練習で発音チェックモックから苦手に保存できる', async ({ page }) => {
   await installMockRecorder(page);
   await page.goto('/practice');
@@ -405,7 +478,7 @@ test('Flow D: 練習で発音チェックモックから苦手に保存できる
   await page.getByRole('button', { name: 'ゆっくり聞く' }).click();
   await page.getByRole('button', { name: '録音する' }).click();
   await expect(page.getByText('録音中')).toBeVisible();
-  await page.getByRole('button', { name: '停止', exact: true }).click();
+  await page.locator('button').filter({ hasText: '停止' }).click();
   await expect(page.getByText('録音できました')).toBeVisible();
   await expect(page.getByRole('button', { name: '自分の音声を聞く' })).toBeVisible();
   await page.getByRole('button', { name: '発音チェックへ' }).click();
@@ -420,6 +493,8 @@ test('Flow D: 練習で発音チェックモックから苦手に保存できる
 
 test('Flow E: メッセージ意味確認から返信保存と大きく表示へ進める', async ({ page }) => {
   await page.goto('/messages');
+  await expect(page.getByTestId('messages-input')).toHaveValue('');
+  await expect(page.getByTestId('messages-input')).toHaveAttribute('placeholder', '例：下次也一起玩吧～');
   await page.getByLabel('相手から来たメッセージ').fill('下次也一起玩吧～');
   await page.getByRole('button', { name: '意味を確認' }).click();
   await expect(page.getByText('だいたいの意味')).toBeVisible();
@@ -452,9 +527,15 @@ test('Flow F: 左上メニューから設定へ進み禁止文言が出ていな
   await expect(page.getByRole('heading', { name: '設定', exact: true })).toBeVisible();
   await expect(page.getByText('表示', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: '台灣華語' }).click();
-  await expect(page.getByRole('button', { name: '使用' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '製作' })).toBeVisible();
-  await page.getByRole('button', { name: '日本語' }).click();
+  await expect(page.getByRole('button', { name: '使用', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '製作', exact: true })).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => window.localStorage.getItem('taiwan-talk-display-language')))
+    .toBe('zh-TW');
+  await expect(page.getByText('聲音設定')).toBeVisible();
+  await expect(page.getByText('裝置檢查')).toBeVisible();
+  await expect(page.getByRole('button', { name: '聲音測試' })).toBeVisible();
+  await page.getByRole('button', { name: '日文顯示' }).click();
   await expect(page.getByRole('button', { name: '使う', exact: true })).toBeVisible();
   await expect(page.getByText('音声設定')).toBeVisible();
   await page.getByRole('button', { name: '女性寄り' }).click();

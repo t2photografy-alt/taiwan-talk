@@ -1,16 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Bookmark, Lightbulb, Mic2, Play, Sparkles, Volume2 } from 'lucide-react';
 import { Chip } from '../../components/Chip';
 import { Header } from '../../components/Header';
 import { PrimaryButton } from '../../components/PrimaryButton';
-import { categoryLabels } from '../../data/presets';
 import { conversationService } from '../../lib/conversation/conversationService';
+import { getMandarinText } from '../../lib/conversation/phraseDisplay';
 import type {
   ConversationResult,
   LanguageDirection,
   PhraseCategory,
 } from '../../lib/conversation/types';
 import { useDisplayLanguage } from '../../lib/displayLanguage/DisplayLanguageProvider';
+import type { TranslationKey } from '../../lib/displayLanguage/types';
 import { useSpeechPlayback } from '../../lib/speech/useSpeechPlayback';
 
 type ComposePageProps = {
@@ -29,9 +30,20 @@ const categoryOrder: PhraseCategory[] = [
   'other',
 ];
 
+const categoryKey: Record<PhraseCategory, TranslationKey> = {
+  greeting: 'category.greeting',
+  thanks: 'category.thanks',
+  photo: 'category.photo',
+  event: 'category.event',
+  oshi: 'category.oshi',
+  dm: 'category.dm',
+  seeAgain: 'category.seeAgain',
+  other: 'category.other',
+};
+
 export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: ComposePageProps) {
   const [direction, setDirection] = useState<LanguageDirection>('ja-to-zh-TW');
-  const [sourceText, setSourceText] = useState('久しぶり〜ほんと会いたかったよ！');
+  const [sourceText, setSourceText] = useState('');
   const [category, setCategory] = useState<PhraseCategory>('seeAgain');
   const [result, setResult] = useState<ConversationResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -44,8 +56,23 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
     () => (result ? { ...result, category } : null),
     [category, result],
   );
+  const speechText = resultWithCategory ? getMandarinText(resultWithCategory) : '';
+  const canGenerate = sourceText.trim().length > 0 && !isLoading;
+
+  function selectDirection(nextDirection: LanguageDirection) {
+    setDirection(nextDirection);
+    setSourceText('');
+    setResult(null);
+    setSavedNotice('');
+    speechPlayback.stop();
+  }
 
   async function generate() {
+    if (!sourceText.trim()) {
+      setResult(null);
+      return;
+    }
+
     const generationId = generationIdRef.current + 1;
     generationIdRef.current = generationId;
     const requestedSourceText = sourceText;
@@ -73,17 +100,13 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
     }
   }
 
-  useEffect(() => {
-    void generate();
-  }, []);
-
   async function saveResult() {
     if (!resultWithCategory) {
       return;
     }
 
     await onSaveResult(resultWithCategory);
-    setSavedNotice('保存しました');
+    setSavedNotice(t('compose.savedNotice'));
   }
 
   return (
@@ -96,6 +119,7 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
 
       <section className="mb-4 grid grid-cols-2 gap-3">
         <button
+          aria-pressed={direction === 'ja-to-zh-TW'}
           className={[
             'rounded-[18px] border p-4 text-center transition focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-200',
             direction === 'ja-to-zh-TW'
@@ -103,12 +127,13 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
               : 'border-[#d9e1ee] bg-white text-[#344054]',
           ].join(' ')}
           type="button"
-          onClick={() => setDirection('ja-to-zh-TW')}
+          onClick={() => selectDirection('ja-to-zh-TW')}
         >
-          <span className="block text-base font-black">日本語から</span>
-          <span className="mt-1 block text-xs font-bold text-[#344054]">日本語 → 台湾華語</span>
+          <span className="block text-base font-black">{t('direction.fromJa')}</span>
+          <span className="mt-1 block text-xs font-bold text-[#344054]">{t('direction.jaToZh')}</span>
         </button>
         <button
+          aria-pressed={direction === 'zh-TW-to-ja'}
           className={[
             'rounded-[18px] border p-4 text-center transition focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-200',
             direction === 'zh-TW-to-ja'
@@ -116,23 +141,27 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
               : 'border-[#d9e1ee] bg-white text-[#344054]',
           ].join(' ')}
           type="button"
-          onClick={() => setDirection('zh-TW-to-ja')}
+          onClick={() => selectDirection('zh-TW-to-ja')}
         >
-          <span className="block text-base font-black">台湾華語から</span>
-          <span className="mt-1 block text-xs font-bold text-[#344054]">台湾華語 → 日本語</span>
+          <span className="block text-base font-black">{t('direction.fromZh')}</span>
+          <span className="mt-1 block text-xs font-bold text-[#344054]">{t('direction.zhToJa')}</span>
         </button>
       </section>
 
       <section className="mb-4">
         <label className="mb-2 block text-sm font-black text-[#141821]" htmlFor="compose-source">
-          話したいこと（{direction === 'ja-to-zh-TW' ? '日本語' : '台湾華語'}）
+          {direction === 'ja-to-zh-TW' ? t('compose.inputLabelJa') : t('compose.inputLabelZh')}
         </label>
+        <p className="mb-2 text-xs font-bold leading-relaxed text-[#667085]">
+          {direction === 'ja-to-zh-TW' ? t('compose.helperJa') : t('compose.helperZh')}
+        </p>
         <div className="glass-card rounded-[18px] p-3">
           <textarea
             className="min-h-20 w-full resize-none bg-transparent text-[18px] font-bold leading-relaxed text-[#141821] outline-none placeholder:text-[#98a2b3]"
             data-testid="compose-input"
             id="compose-source"
             maxLength={200}
+            placeholder={direction === 'ja-to-zh-TW' ? t('compose.placeholderJa') : t('compose.placeholderZh')}
             value={sourceText}
             onChange={(event) => setSourceText(event.target.value)}
           />
@@ -148,19 +177,20 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
         data-testid="compose-generate-button"
         fullWidth
         icon={<Sparkles aria-hidden="true" size={18} />}
+        disabled={!canGenerate}
         onClick={generate}
       >
-        {isLoading ? '整えています...' : '自然な言い方にする'}
+        {isLoading ? t('compose.generating') : t('compose.generate')}
       </PrimaryButton>
 
       {resultWithCategory ? (
         <section className="phrase-hero mb-4 rounded-[22px] p-4" data-testid="compose-result-card">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-black text-[#141821]">
-              {direction === 'ja-to-zh-TW' ? '友達トーンの台湾華語' : '自然な日本語'}
+              {direction === 'ja-to-zh-TW' ? t('compose.resultZh') : t('compose.resultJa')}
             </h2>
             <span className="rounded-full bg-[var(--brand-red)] px-3 py-1 text-xs font-black text-white">
-              おすすめ
+              {t('compose.recommended')}
             </span>
           </div>
           <p
@@ -193,7 +223,7 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
                 }
                 speechPlayback.toggle({
                   phraseId: 'compose-result',
-                  text: resultWithCategory.resultText,
+                  text: speechText,
                   speed: 'normal',
                 });
               }}
@@ -211,7 +241,7 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
                 }
                 speechPlayback.toggle({
                   phraseId: 'compose-result',
-                  text: resultWithCategory.resultText,
+                  text: speechText,
                   speed: 'slow',
                 });
               }}
@@ -266,7 +296,7 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
 
       {resultWithCategory?.alternatives ? (
         <section className="mb-4">
-          <h2 className="mb-2 text-sm font-black text-[#141821]">別の言い方</h2>
+          <h2 className="mb-2 text-sm font-black text-[#141821]">{t('compose.alternatives')}</h2>
           <div className="grid grid-cols-2 gap-3">
             {resultWithCategory.alternatives.map((alternative) => (
               <article key={alternative.label} className="glass-card rounded-[18px] p-3">
@@ -289,24 +319,24 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
         <div className="flex gap-3">
           <Lightbulb aria-hidden="true" className="mt-1 text-[#f59e0b]" size={24} />
           <div>
-            <h2 className="text-sm font-black text-[#141821]">ニュアンス</h2>
+            <h2 className="text-sm font-black text-[#141821]">{t('compose.nuance')}</h2>
             <p className="mt-1 text-sm font-bold leading-relaxed text-[#344054]">
               {resultWithCategory?.nuance ??
-                '完璧な翻訳ではなく、会話のきっかけを作るための補助です。'}
+                t('compose.defaultNuance')}
             </p>
           </div>
         </div>
       </section>
 
       <section>
-        <h2 className="mb-2 text-sm font-black text-[#141821]">カテゴリに保存</h2>
+        <h2 className="mb-2 text-sm font-black text-[#141821]">{t('compose.categorySave')}</h2>
         <div className="flex flex-wrap gap-2">
           {categoryOrder.map((item) => (
             <Chip key={item} selected={item === category} onClick={() => setCategory(item)}>
-              {categoryLabels[item]}
+              {t(categoryKey[item])}
             </Chip>
           ))}
-          <Chip>＋ 新しいカテゴリ</Chip>
+          <Chip>{t('compose.newCategory')}</Chip>
         </div>
       </section>
     </div>

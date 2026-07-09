@@ -13,6 +13,7 @@ import {
 import { Header } from '../../components/Header';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { presetPhrases } from '../../data/presets';
+import { getMandarinText } from '../../lib/conversation/phraseDisplay';
 import type { Phrase, PracticeResult } from '../../lib/conversation/types';
 import { useDisplayLanguage } from '../../lib/displayLanguage/DisplayLanguageProvider';
 import { practiceService } from '../../lib/practice/practiceService';
@@ -30,8 +31,6 @@ type PracticePageProps = {
 };
 
 type RecordingUiState = 'idle' | 'recording' | 'recorded' | 'checking' | 'error';
-
-const stepLabels = ['例文を聞く', '録音して聞き返す', '仮チェック', '苦手を保存'];
 
 function Waveform({ active = false }: { active?: boolean }) {
   const heights = [14, 22, 34, 52, 30, 18, 42, 26, 16, 36, 20];
@@ -88,6 +87,15 @@ export function PracticePage({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { t } = useDisplayLanguage();
   const speechPlayback = useSpeechPlayback();
+  const practiceText = getMandarinText(selectedPhrase);
+  const supportText =
+    practiceText === selectedPhrase.resultText ? selectedPhrase.sourceText : selectedPhrase.resultText;
+  const stepLabels = [
+    t('practice.stepListen'),
+    t('practice.stepRecord'),
+    t('practice.stepCheck'),
+    t('practice.stepSaveWeak'),
+  ];
 
   useEffect(() => {
     recordedAudioRef.current = recordedAudio;
@@ -168,7 +176,7 @@ export function PracticePage({
       recordedAudioRef.current = recording;
       setRecordedAudio(recording);
       setRecordingState('recorded');
-      setRecorderNotice('録音できました');
+      setRecorderNotice(t('practice.recordedNotice'));
     } catch (error) {
       recorderSessionRef.current = null;
       setRecordingState('error');
@@ -185,13 +193,13 @@ export function PracticePage({
       audioRef.current.currentTime = 0;
       await audioRef.current.play();
     } catch {
-      setRecorderNotice('録音音声を再生できませんでした。端末の設定を確認してください。');
+      setRecorderNotice(t('settings.recordingPlaybackFailed'));
     }
   }
 
   async function runMockCheck() {
     if (!recordedAudio) {
-      setRecorderNotice('録音してから発音チェックへ進めます。');
+      setRecorderNotice(t('practice.needRecording'));
       return;
     }
 
@@ -211,9 +219,9 @@ export function PracticePage({
     await onSavePhrase({
       ...selectedPhrase,
       isFavorite: true,
-      note: selectedPhrase.note ?? '苦手に保存したフレーズです。',
+      note: selectedPhrase.note ?? t('practice.saveWeak'),
     });
-    setNotice('苦手に保存しました');
+    setNotice(t('practice.savedWeak'));
   }
 
   function goNextPhrase() {
@@ -234,12 +242,12 @@ export function PracticePage({
       <section className="glass-card mb-4 rounded-[20px] p-4">
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-black text-[#667085]">今日のフレーズ</p>
+            <p className="text-xs font-black text-[#667085]">{t('practice.todayPhrase')}</p>
             <h2
               className="mt-1 text-[17px] font-black leading-relaxed text-[#141821]"
               data-testid="practice-phrase-text"
             >
-              {selectedPhrase.resultText.replace('\n', ' ')}
+              {practiceText.replace('\n', ' ')}
             </h2>
           </div>
           <button
@@ -252,7 +260,7 @@ export function PracticePage({
           </button>
         </div>
         <p className="text-sm font-bold text-[#344054]">{selectedPhrase.pinyin}</p>
-        <p className="mt-1 text-sm font-bold text-[#667085]">{selectedPhrase.sourceText}</p>
+        <p className="mt-1 text-sm font-bold text-[#667085]">{supportText}</p>
       </section>
 
       <section className="mb-4">
@@ -285,7 +293,7 @@ export function PracticePage({
             onClick={() =>
               speechPlayback.toggle({
                 phraseId: selectedPhrase.id,
-                text: selectedPhrase.resultText,
+                text: practiceText,
                 speed: 'normal',
               })
             }
@@ -298,7 +306,7 @@ export function PracticePage({
             onClick={() =>
               speechPlayback.toggle({
                 phraseId: selectedPhrase.id,
-                text: selectedPhrase.resultText,
+                text: practiceText,
                 speed: 'slow',
               })
             }
@@ -314,20 +322,20 @@ export function PracticePage({
       </section>
 
       <section className="glass-card mb-4 rounded-[22px] p-4 text-center">
-        <p className="text-sm font-black text-[#141821]">押して話す</p>
+        <p className="text-sm font-black text-[#141821]">{t('practice.pressToTalk')}</p>
         <p className="mt-1 text-xs font-bold text-[#667085]">
           {recordingState === 'recording'
-            ? '録音中'
+            ? t('practice.recording')
             : recordingState === 'recorded'
-              ? '録音済み'
+              ? t('practice.recorded')
               : recordingState === 'checking'
-                ? '仮チェック中'
-                : '録音待機'}
+                ? t('practice.checking')
+                : t('practice.recordingIdle')}
         </p>
         <div className="mt-2 grid grid-cols-[1fr_92px_1fr] items-center gap-3">
           <Waveform active={recordingState === 'recording'} />
           <button
-            aria-label={recordingState === 'recording' ? '録音を停止' : '録音する'}
+            aria-label={recordingState === 'recording' ? t('cta.stop') : t('practice.startRecording')}
             className={[
               'grid h-[92px] w-[92px] place-items-center rounded-full text-white shadow-[0_16px_30px_rgba(239,31,36,0.28)] transition focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-200',
               recordingState === 'recording' ? 'bg-[#b91c1c]' : 'bg-[var(--brand-red)]',
@@ -360,7 +368,7 @@ export function PracticePage({
             variant="danger"
             onClick={() => void stopRecording()}
           >
-            停止
+            {t('cta.stop')}
           </PrimaryButton>
         ) : null}
 
@@ -369,10 +377,10 @@ export function PracticePage({
             <audio ref={audioRef} src={recordedAudio.url} />
             <div className="grid grid-cols-2 gap-2">
               <PrimaryButton icon={<Play aria-hidden="true" size={18} />} variant="soft" onClick={playRecordedAudio}>
-                自分の音声を聞く
+                {t('practice.listenOwn')}
               </PrimaryButton>
               <PrimaryButton icon={<RotateCcw aria-hidden="true" size={18} />} variant="soft" onClick={resetRecording}>
-                もう一回録音
+                {t('practice.recordAgain')}
               </PrimaryButton>
               <PrimaryButton
                 className="col-span-2"
@@ -381,7 +389,7 @@ export function PracticePage({
                 onClick={() => void runMockCheck()}
                 disabled={recordingState === 'checking'}
               >
-                {recordingState === 'checking' ? '確認しています...' : '発音チェックへ'}
+                {recordingState === 'checking' ? t('practice.checkingButton') : t('practice.toCheck')}
               </PrimaryButton>
             </div>
           </div>
@@ -401,26 +409,26 @@ export function PracticePage({
 
       {result ? (
         <section className="glass-card mb-4 rounded-[20px] p-4">
-          <h2 className="mb-3 text-sm font-black text-[#141821]">あなたの発音チェック結果</h2>
+          <h2 className="mb-3 text-sm font-black text-[#141821]">{t('practice.resultTitle')}</h2>
           <div className="grid grid-cols-[1fr_1.1fr] gap-4">
             <div>
-              <p className="text-sm font-black text-[var(--brand-red)]">通じやすさ</p>
+              <p className="text-sm font-black text-[var(--brand-red)]">{t('practice.scoreLabel')}</p>
               <p className="mt-1 text-[54px] font-black leading-none text-[var(--brand-red)]">
                 {result.score}%
               </p>
-              <p className="mt-2 text-sm font-black text-[#344054]">だいたい通じる！</p>
+              <p className="mt-2 text-sm font-black text-[#344054]">{t('practice.scoreComment')}</p>
             </div>
             <dl className="space-y-3 border-l border-[#edf1f7] pl-4 text-sm font-bold text-[#344054]">
               <div className="flex justify-between gap-3">
-                <dt>発音の近さ</dt>
+                <dt>{t('practice.closeness')}</dt>
                 <dd className="font-black text-[#141821]">{result.pronunciationCloseness}%</dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt>流れの自然さ</dt>
+                <dt>{t('practice.flow')}</dt>
                 <dd className="font-black text-[#141821]">{result.naturalFlow}%</dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt>言えた単語</dt>
+                <dt>{t('practice.words')}</dt>
                 <dd className="font-black text-[#141821]">
                   {result.recognizedWordCount} / {result.totalWordCount}
                 </dd>
@@ -428,32 +436,32 @@ export function PracticePage({
             </dl>
           </div>
           <p className="mt-3 rounded-[12px] bg-[#f3f6fb] px-3 py-2 text-xs font-bold leading-relaxed text-[#667085]">
-            発音チェック結果は現在、開発中の仮表示です。
+            {t('practice.mockNotice')}
           </p>
         </section>
       ) : null}
 
       <section className="soft-blue mb-4 rounded-[18px] p-4">
-        <h2 className="text-sm font-black text-[#0f766e]">アドバイス</h2>
+        <h2 className="text-sm font-black text-[#0f766e]">{t('practice.advice')}</h2>
         <p className="mt-1 text-sm font-bold leading-relaxed text-[#344054]">
-          {result?.advice ?? '聞いたあとに録音すると、通じやすさの目安が出ます。'}
+          {result?.advice ?? t('practice.defaultAdvice')}
         </p>
       </section>
 
       <section className="glass-card mb-4 rounded-[18px] p-3">
         <div className="grid grid-cols-[1fr_42px] items-center gap-2">
           <div>
-            <p className="text-xs font-black text-[#0f766e]">暗記練習</p>
-            <p className="mt-1 text-lg font-black text-[#141821]">{selectedPhrase.resultText.replace('\n', ' ')}</p>
+            <p className="text-xs font-black text-[#0f766e]">{t('practice.memory')}</p>
+            <p className="mt-1 text-lg font-black text-[#141821]">{practiceText.replace('\n', ' ')}</p>
           </div>
           <button
-            aria-label="暗記練習を再生"
+            aria-label={t('practice.playMemory')}
             className="grid h-11 w-11 place-items-center rounded-full bg-[#eef6ff] text-[var(--brand-blue)]"
             type="button"
             onClick={() =>
               speechPlayback.toggle({
                 phraseId: selectedPhrase.id,
-                text: selectedPhrase.resultText,
+                text: practiceText,
                 speed: 'normal',
               })
             }
@@ -465,10 +473,10 @@ export function PracticePage({
 
       <div className="grid grid-cols-2 gap-2">
         <PrimaryButton icon={<RotateCcw aria-hidden="true" size={18} />} variant="soft" onClick={resetRecording}>
-          もう一回録音
+          {t('practice.recordAgain')}
         </PrimaryButton>
         <PrimaryButton variant="blue" onClick={goNextPhrase}>
-          次のフレーズ
+          {t('practice.nextPhrase')}
         </PrimaryButton>
         <PrimaryButton
           className="col-span-2"
@@ -476,7 +484,7 @@ export function PracticePage({
           variant="soft"
           onClick={saveWeakPhrase}
         >
-          苦手に保存
+          {t('practice.saveWeak')}
         </PrimaryButton>
       </div>
       {notice ? <p className="mt-3 text-center text-sm font-black text-[var(--brand-red)]">{notice}</p> : null}

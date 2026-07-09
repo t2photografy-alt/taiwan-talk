@@ -33,7 +33,7 @@ export function BrandHeader({ className = '' }: BrandHeaderProps) {
               type="button"
               onClick={() => setLanguage(item.language)}
             >
-              {item.label}
+              {item.language === 'ja' ? t('language.ja') : t('language.zh')}
             </button>
           ))}
         </div>
