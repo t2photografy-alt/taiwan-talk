@@ -200,6 +200,22 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
           >
             {resultWithCategory.resultText}
           </p>
+          {direction === 'zh-TW-to-ja' && resultWithCategory.nuance ? (
+            <div className="mt-4 border-l-4 border-[#f5ae28] pl-3" data-testid="compose-result-nuance">
+              <h3 className="text-xs font-black text-[#667085]">{t('compose.nuance')}</h3>
+              <p className="mt-1 text-sm font-bold leading-relaxed text-[#344054]">
+                {resultWithCategory.nuance}
+              </p>
+            </div>
+          ) : null}
+          {direction === 'zh-TW-to-ja' && resultWithCategory.literalMeaning ? (
+            <div className="mt-3 rounded-[14px] bg-[#f3f6fb] px-3 py-2" data-testid="compose-literal-meaning">
+              <h3 className="text-xs font-black text-[#667085]">{t('compose.literalMeaning')}</h3>
+              <p className="mt-1 text-sm font-bold leading-relaxed text-[#344054]">
+                {resultWithCategory.literalMeaning}
+              </p>
+            </div>
+          ) : null}
           {resultWithCategory.pinyin ? (
             <p
               className="mt-2 whitespace-pre-line text-sm font-semibold leading-relaxed text-[#344054]"
@@ -212,6 +228,7 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
             className="mt-3 rounded-[14px] bg-white/72 p-3 text-sm font-bold leading-relaxed text-[#344054]"
             data-testid="compose-result-source"
           >
+            <span className="mb-1 block text-xs font-black text-[#667085]">{t('compose.originalText')}</span>
             {resultWithCategory.sourceText}
           </p>
           <div className="mt-4 grid grid-cols-2 gap-2">
@@ -233,9 +250,11 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
                 });
               }}
             >
-              {resultWithCategory && speechPlayback.isPlaying('compose-result', 'normal')
-                ? t('cta.stop')
-                : t('cta.listen')}
+              {speechPlayback.isLoading('compose-result', 'normal')
+                ? t('cta.loading')
+                : resultWithCategory && speechPlayback.isPlaying('compose-result', 'normal')
+                  ? t('cta.stop')
+                  : t('cta.listen')}
             </PrimaryButton>
             <PrimaryButton
               data-speech-language={mainSpeechTarget?.language}
@@ -255,9 +274,11 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
                 });
               }}
             >
-              {resultWithCategory && speechPlayback.isPlaying('compose-result', 'slow')
-                ? t('cta.stop')
-                : t('cta.slow')}
+              {speechPlayback.isLoading('compose-result', 'slow')
+                ? t('cta.loading')
+                : resultWithCategory && speechPlayback.isPlaying('compose-result', 'slow')
+                  ? t('cta.stop')
+                  : t('cta.slow')}
             </PrimaryButton>
             {originalSpeechTarget ? (
               <PrimaryButton
@@ -276,9 +297,11 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
                   });
                 }}
               >
-                {speechPlayback.isPlaying('compose-original', 'normal')
-                  ? t('cta.stop')
-                  : t('cta.listenOriginal')}
+                {speechPlayback.isLoading('compose-original', 'normal')
+                  ? t('cta.loading')
+                  : speechPlayback.isPlaying('compose-original', 'normal')
+                    ? t('cta.stop')
+                    : t('cta.listenOriginal')}
               </PrimaryButton>
             ) : null}
             <PrimaryButton
@@ -293,6 +316,11 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
           {speechPlayback.error ? (
             <p className="mt-2 rounded-[12px] bg-white/75 px-3 py-2 text-xs font-bold leading-relaxed text-[#b42318]">
               {speechPlayback.error}
+            </p>
+          ) : null}
+          {speechPlayback.provider === 'browser-fallback' ? (
+            <p className="mt-2 rounded-[12px] bg-white/75 px-3 py-2 text-xs font-bold leading-relaxed text-[#b45309]" data-testid="speech-fallback-notice">
+              {t('speech.fallbackNotice')}
             </p>
           ) : null}
           <p
@@ -346,18 +374,19 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
         </section>
       ) : null}
 
-      <section className="soft-blue mb-4 rounded-[18px] p-4">
-        <div className="flex gap-3">
-          <Lightbulb aria-hidden="true" className="mt-1 text-[#f59e0b]" size={24} />
-          <div>
-            <h2 className="text-sm font-black text-[#141821]">{t('compose.nuance')}</h2>
-            <p className="mt-1 text-sm font-bold leading-relaxed text-[#344054]">
-              {resultWithCategory?.nuance ??
-                t('compose.defaultNuance')}
-            </p>
+      {direction === 'ja-to-zh-TW' ? (
+        <section className="soft-blue mb-4 rounded-[18px] p-4">
+          <div className="flex gap-3">
+            <Lightbulb aria-hidden="true" className="mt-1 text-[#f59e0b]" size={24} />
+            <div>
+              <h2 className="text-sm font-black text-[#141821]">{t('compose.nuance')}</h2>
+              <p className="mt-1 text-sm font-bold leading-relaxed text-[#344054]">
+                {resultWithCategory?.nuance ?? t('compose.defaultNuance')}
+              </p>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
       <section>
         <h2 className="mb-2 text-sm font-black text-[#141821]">{t('compose.categorySave')}</h2>

@@ -46,8 +46,7 @@ It is not an event-only app. Event conversations are one representative use case
 - Slow playback now uses a clearer slower rate than normal playback
 - Playback buttons can be tapped again to stop the current speech
 - Display language switching was added for key UI labels: Japanese / Taiwan Mandarin
-- Voice type settings were added: auto / female-leaning / male-leaning
-- Voice selection depends on the device's Web Speech API voices
+- Device-dependent voice preferences were added at this stage and were later superseded by Phase 3E AI voice styles
 
 ## Phase 3A Status
 
@@ -79,6 +78,16 @@ It is not an event-only app. Event conversations are one representative use case
 - The review keeps Taiwan Talk's app fit broad: face-to-face, SNS/DM, photo exchanges, greetings after meeting again, thanks, light invitations, gentle declines, and replies
 - Even when a case is marked 仮OK, generated Taiwan Mandarin is not native-approved
 
+## Phase 3E Status
+
+- Main read-aloud audio uses server-side OpenAI TTS through `/api/speech/generate`
+- Web Speech API remains only as a fallback when AI speech cannot be generated or played
+- Voice settings select two real server-side voice IDs: natural-soft and natural-calm; the UI does not guarantee gender
+- Normal and slow modes use separate conversational speaking instructions instead of only changing playback speed
+- Taiwan Mandarin → Japanese generation prioritizes natural spoken/DM Japanese and keeps `literalMeaning` as secondary meaning support
+- `npm run qa:tts` validates audio responses, voice mapping, speed modes, and invalid requests
+- AI voice quality and Taiwan Mandarin/Japanese naturalness still require device and human review
+
 ## Display Language And Conversation Direction
 
 - Display language changes app UI labels between Japanese and Taiwan Mandarin.
@@ -93,6 +102,9 @@ It is not an event-only app. Event conversations are one representative use case
 - Taiwan Mandarin → Japanese also keeps a supplemental `原文を聞く` path for the Taiwan Mandarin source text when space allows.
 - Practice continues to prioritize the Taiwan Mandarin text: `resultText` for Japanese → Taiwan Mandarin, and `sourceText` for Taiwan Mandarin → Japanese.
 - `pinyin` is always the reading for the Taiwan Mandarin text in the phrase pair, not for Japanese `resultText`.
+- The primary provider is OpenAI TTS. The browser's Web Speech API is used only when the AI provider fails.
+- Voice styles are `natural-soft` and `natural-calm`; actual gender is not inferred or guaranteed.
+- Read-aloud audio is AI-generated, while its perceived naturalness still varies by language, wording, device, and speaker.
 
 ## Tech Stack
 
@@ -124,11 +136,14 @@ npm run build
 npm run qa:flow
 npm run qa:screenshots
 npm run qa:ai-generation
+npm run qa:tts
 ```
 
 `qa:flow` does not require generated phrases to match one fixed sentence. It checks the generated result card, Taiwan Mandarin-like text, save/display/practice routes, and the native-check notice so the same flow works with mock fallback and AI-enabled Production.
 
 `qa:ai-generation` is for generation quality sampling. It posts the documented cases to `/api/conversation/generate`, checks structure and review flags, then writes a Markdown report under `outputs/ai-generation-qa/`. It is not a native-language approval step.
+
+`qa:tts` validates `/api/speech/generate`. Without `BASE_URL`, it runs the Vercel handler with an injected audio generator; with `BASE_URL`, it verifies real audio responses from the deployed API.
 
 Human-readable first-pass review notes are kept in `docs/ai-generation-review.md`. Passing `qa:ai-generation` does not mean AI generation quality is finished.
 
@@ -137,6 +152,7 @@ To run the flow QA against a deployed URL:
 ```bash
 BASE_URL=<Vercel URL> npm run qa:flow
 BASE_URL=<Vercel URL> npm run qa:ai-generation
+BASE_URL=<Vercel URL> npm run qa:tts
 ```
 
 PowerShell:
@@ -145,6 +161,7 @@ PowerShell:
 $env:BASE_URL="<Vercel URL>"
 npm run qa:flow
 npm run qa:ai-generation
+npm run qa:tts
 ```
 
 `npm run qa:screenshots` writes review images to `outputs/visual-qa/`.
@@ -177,11 +194,17 @@ Set these in Vercel Project Settings → Environment Variables. Use Production f
 OPENAI_API_KEY=
 OPENAI_MODEL=
 AI_GENERATION_ENABLED=true
+OPENAI_TTS_ENABLED=true
+OPENAI_TTS_MODEL=gpt-4o-mini-tts
+OPENAI_TTS_VOICE_SOFT=marin
+OPENAI_TTS_VOICE_CALM=cedar
 ```
 
 - `OPENAI_API_KEY` must never be committed or exposed as a `VITE_` variable.
 - `OPENAI_MODEL` is optional; the server function uses a code default when it is empty.
 - If `AI_GENERATION_ENABLED` is not `true` or the API key is missing, the app falls back to mock generation.
+- TTS voice IDs and instructions remain server-side. Clients can select only the two allowed voice styles, not arbitrary voices or instructions.
+- If `OPENAI_TTS_ENABLED` is not `true`, the key is missing, or the TTS request fails, read-aloud falls back to Web Speech API and shows a device-audio notice.
 
 ## Current Mock Areas
 
@@ -190,8 +213,8 @@ The app intentionally keeps these areas mocked or pending final verification:
 - AI generation: OpenAI API foundation is available, but generated wording is still under review and falls back to mock when disabled or off-intent
 - Pronunciation analysis: still mocked
 - Taiwan Mandarin wording: marked with `needsNativeCheck`
-- Audio playback: implemented with browser `speechSynthesis`
+- Audio playback: OpenAI TTS is implemented, but real voice naturalness is still under device and human review; browser `speechSynthesis` is fallback only
 - Recording: implemented as a browser `MediaRecorder` foundation
 - Android/PWA support: browser and device dependent
 - Display language wording: Taiwan Mandarin UI wording still needs native review
-- Voice type selection: heuristic and device voice dependent
+- Voice style selection: real server-side voice IDs are used, but no gender guarantee is made

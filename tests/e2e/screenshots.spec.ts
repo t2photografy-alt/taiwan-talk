@@ -81,7 +81,7 @@ test('390px主要画面の目視確認用スクリーンショットを保存す
   await page.waitForTimeout(250);
   await page.screenshot({ fullPage: true, path: resolve(outputDir, '06-settings.png') });
 
-  await page.getByRole('button', { name: '台灣華語' }).click();
+  await page.getByRole('button', { name: '台灣華語', exact: true }).click();
   await page.goto('/');
   await expect(page.getByRole('button', { name: '使用' })).toBeVisible();
   await page.waitForTimeout(250);
@@ -97,6 +97,10 @@ test('390px主要画面の目視確認用スクリーンショットを保存す
   await page.getByRole('button', { name: '從台灣華語' }).click();
   await expect(page.getByRole('button', { name: '從台灣華語' })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('compose-input')).toHaveAttribute('placeholder', '例：下次也一起玩吧～');
+  await page.getByTestId('compose-input').fill('下次也一起玩吧～');
+  await page.getByTestId('compose-generate-button').click();
+  await expect(page.getByTestId('compose-result-card')).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByTestId('compose-literal-meaning')).toBeVisible();
   await page.waitForTimeout(250);
   await page.screenshot({ fullPage: true, path: resolve(outputDir, '09-compose-zh-to-ja.png') });
 });

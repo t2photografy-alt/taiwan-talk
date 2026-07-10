@@ -7,6 +7,7 @@ npm install
 npm run build
 npm run qa:flow
 npm run qa:screenshots
+npm run qa:tts
 ```
 
 ## Git
@@ -51,11 +52,18 @@ Set these in Vercel Project Settings → Environment Variables.
 OPENAI_API_KEY=
 OPENAI_MODEL=
 AI_GENERATION_ENABLED=true
+OPENAI_TTS_ENABLED=true
+OPENAI_TTS_MODEL=gpt-4o-mini-tts
+OPENAI_TTS_VOICE_SOFT=marin
+OPENAI_TTS_VOICE_CALM=cedar
 ```
 
 - `OPENAI_API_KEY`: server-side OpenAI API key. Do not commit it and do not expose it as a `VITE_` variable.
 - `OPENAI_MODEL`: optional model override for the AI generation route.
 - `AI_GENERATION_ENABLED`: set to `true` only when the API key is configured and AI generation should be used.
+- `OPENAI_TTS_ENABLED`: set to `true` to make OpenAI TTS the primary read-aloud provider.
+- `OPENAI_TTS_MODEL`: speech model override. The default is `gpt-4o-mini-tts`.
+- `OPENAI_TTS_VOICE_SOFT` / `OPENAI_TTS_VOICE_CALM`: server-side voice IDs for the two UI styles. The defaults are `marin` and `cedar`.
 
 Recommended scope:
 
@@ -75,6 +83,8 @@ https://taiwan-talk.vercel.app/
 
 ```bash
 BASE_URL=<Vercel URL> npm run qa:flow
+BASE_URL=<Vercel URL> npm run qa:ai-generation
+BASE_URL=<Vercel URL> npm run qa:tts
 ```
 
 Published Phase 1 app:
@@ -88,6 +98,8 @@ PowerShell:
 ```powershell
 $env:BASE_URL="<Vercel URL>"
 npm run qa:flow
+npm run qa:ai-generation
+npm run qa:tts
 ```
 
 Published Phase 1 app:
@@ -97,4 +109,4 @@ $env:BASE_URL="https://taiwan-talk.vercel.app"
 npm run qa:flow
 ```
 
-Latest production QA result: `BASE_URL=https://taiwan-talk.vercel.app npm run qa:flow` passed with 8 tests after the Phase 3A deploy.
+Production release checks must include `qa:flow`, `qa:ai-generation`, and `qa:tts`. AI voice quality itself remains a human/device review item.

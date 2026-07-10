@@ -26,8 +26,10 @@ const guardedButtonLabels = [
   '録音テスト',
   '録音を聞く',
   '状態を再確認',
-  '女性寄り',
-  '男性寄り',
+  '自然・やわらかめ',
+  '自然・落ち着いた声',
+  '日本語で試す',
+  '台灣華語で試す',
 ];
 
 const photoInput = 'また写真撮らせてください！';
@@ -114,6 +116,42 @@ async function installMockSpeech(page: Page) {
         },
       },
     });
+  });
+}
+
+async function installMockAudio(page: Page) {
+  await page.addInitScript(() => {
+    (window as unknown as { __audioCalls: Array<{ action: 'play' | 'pause'; src: string }> }).__audioCalls = [];
+
+    class MockAudio {
+      currentTime = 0;
+      onended: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      paused = true;
+      src: string;
+
+      constructor(src = '') {
+        this.src = src;
+      }
+
+      async play() {
+        this.paused = false;
+        (window as unknown as { __audioCalls: Array<{ action: 'play' | 'pause'; src: string }> }).__audioCalls.push({
+          action: 'play',
+          src: this.src,
+        });
+      }
+
+      pause() {
+        this.paused = true;
+        (window as unknown as { __audioCalls: Array<{ action: 'play' | 'pause'; src: string }> }).__audioCalls.push({
+          action: 'pause',
+          src: this.src,
+        });
+      }
+    }
+
+    Object.defineProperty(window, 'Audio', { configurable: true, value: MockAudio });
   });
 }
 
@@ -304,11 +342,13 @@ async function expectNativeCheckFromApiIfAvailable(response: Response | null) {
       targetLanguage?: unknown;
       needsNativeCheck?: unknown;
       reviewStatus?: unknown;
+      literalMeaning?: unknown;
     };
   };
 
   expect(payload.ok).toBe(true);
   expect(payload.result?.resultText).toEqual(expect.any(String));
+  expect(payload.result?.literalMeaning).toEqual(expect.any(String));
   if (payload.result?.targetLanguage !== 'ja' || payload.result?.sourceLanguage === 'zh-TW') {
     expect(payload.result?.pinyin).toEqual(expect.any(String));
   }
@@ -339,15 +379,25 @@ async function expectLatestSpeechCall(
   expected: { lang: 'zh-TW' | 'ja-JP'; text: string | RegExp; rate?: number },
 ) {
   await expect
-    .poll(async () =>
-      page.evaluate(() => {
+    .poll(async () => {
+      const call = await page.evaluate(() => {
         const calls = (window as unknown as {
           __speechCalls?: Array<{ text: string; lang: string; rate: number; voiceLang: string | null }>;
         }).__speechCalls ?? [];
         return calls.at(-1) ?? null;
-      }),
-    )
-    .not.toBeNull();
+      });
+
+      return {
+        lang: call?.lang ?? null,
+        rate: call?.rate ?? null,
+        voiceLang: call?.voiceLang ?? null,
+      };
+    })
+    .toEqual({
+      lang: expected.lang,
+      rate: expected.rate ?? 1,
+      voiceLang: expected.lang,
+    });
 
   const call = await page.evaluate(() => {
     const calls = (window as unknown as {
@@ -356,15 +406,10 @@ async function expectLatestSpeechCall(
     return calls.at(-1) ?? null;
   });
 
-  expect(call?.lang).toBe(expected.lang);
-  expect(call?.voiceLang).toBe(expected.lang);
   if (typeof expected.text === 'string') {
     expect(normalizeText(call?.text ?? '')).toContain(normalizeText(expected.text));
   } else {
     expect(call?.text).toMatch(expected.text);
-  }
-  if (typeof expected.rate === 'number') {
-    expect(call?.rate).toBeCloseTo(expected.rate);
   }
 }
 
@@ -405,7 +450,15 @@ async function createAndSavePhotoPhrase(page: Page) {
 }
 
 test.beforeEach(async ({ page }) => {
+  await page.route('**/api/speech/generate', async (route) => {
+    await route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: false, error: { code: 'disabled', message: 'TTS disabled in flow QA' } }),
+    });
+  });
   await installMockSpeech(page);
+  await installMockAudio(page);
   await clearSavedPhrases(page);
 });
 
@@ -423,12 +476,13 @@ test('Flow A: 使う画面から大きく表示して戻れる', async ({ page }
   await expect(page.getByTestId('phrase-main-listen').first()).toHaveAttribute('data-speech-text', /好久不見/);
   await page.getByRole('button', { name: '聞く' }).first().click();
   await expectLatestSpeechCall(page, { lang: 'zh-TW', text: /好久不見/ });
+  await expect(page.getByTestId('speech-fallback-notice').first()).toContainText('端末の音声');
   await expect(page.getByRole('button', { name: '停止' }).first()).toBeVisible();
   await page.getByRole('button', { name: '停止' }).first().click();
   await expect(page.getByRole('button', { name: '聞く' }).first()).toBeVisible();
 
   await page.getByRole('button', { name: 'ゆっくり' }).first().click();
-  await expectLatestSpeechCall(page, { lang: 'zh-TW', text: /好久不見/, rate: 0.6 });
+  await expectLatestSpeechCall(page, { lang: 'zh-TW', text: /好久不見/, rate: 0.75 });
   await expect(page.getByRole('button', { name: '停止' }).first()).toBeVisible();
   await page.getByRole('button', { name: '聞く' }).first().click();
   await expect(page.getByRole('button', { name: '停止' }).first()).toBeVisible();
@@ -470,7 +524,7 @@ test('Flow B: 作るから保存して保存画面で検索できる', async ({ 
   await page.getByRole('button', { name: '聞く' }).first().click();
   await expectLatestSpeechCall(page, { lang: 'zh-TW', text: phrase.resultText });
   await page.getByRole('button', { name: 'ゆっくり' }).first().click();
-  await expectLatestSpeechCall(page, { lang: 'zh-TW', text: phrase.resultText, rate: 0.6 });
+  await expectLatestSpeechCall(page, { lang: 'zh-TW', text: phrase.resultText, rate: 0.75 });
   await expectPageChromeHealthy(page);
 
   await page.goto('/saved');
@@ -524,6 +578,10 @@ test('作る画面: 台湾華語から日本語へ生成して保存・表示・
   const japaneseResult = normalizeText(await page.getByTestId('compose-result-text').innerText());
   expect(japaneseResult).not.toBe('');
   expect(japaneseResult).toMatch(/[ぁ-んァ-ン一-龯]/);
+  await expect(page.getByTestId('compose-result-nuance')).toBeVisible();
+  const literalMeaning = normalizeText(await page.getByTestId('compose-literal-meaning').innerText());
+  expect(literalMeaning).not.toBe('');
+  expect(literalMeaning).not.toBe(japaneseResult);
   await expect(page.getByTestId('compose-result-pinyin')).not.toHaveText('', { timeout: generationWaitMs });
   await expect(page.getByTestId('compose-main-listen')).toHaveAttribute('data-speech-language', 'ja-JP');
   expect(normalizeText((await page.getByTestId('compose-main-listen').getAttribute('data-speech-text')) ?? '')).toBe(japaneseResult);
@@ -534,7 +592,7 @@ test('作る画面: 台湾華語から日本語へ生成して保存・表示・
   await expectLatestSpeechCall(page, { lang: 'ja-JP', text: japaneseResult });
   await page.getByRole('button', { name: '停止' }).first().click();
   await page.getByTestId('compose-main-slow').click();
-  await expectLatestSpeechCall(page, { lang: 'ja-JP', text: japaneseResult, rate: 0.6 });
+  await expectLatestSpeechCall(page, { lang: 'ja-JP', text: japaneseResult, rate: 0.75 });
   await page.getByRole('button', { name: '停止' }).first().click();
   await page.getByTestId('compose-original-listen').click();
   await expectLatestSpeechCall(page, { lang: 'zh-TW', text: taiwanText });
@@ -616,7 +674,7 @@ test('Flow F: 左上メニューから設定へ進み禁止文言が出ていな
   await expect(page).toHaveURL('/settings');
   await expect(page.getByRole('heading', { name: '設定', exact: true })).toBeVisible();
   await expect(page.getByText('表示', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: '台灣華語' }).click();
+  await page.getByRole('button', { name: '台灣華語', exact: true }).click();
   await expect(page.getByRole('button', { name: '使用', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '製作', exact: true })).toBeVisible();
   await expect
@@ -628,12 +686,15 @@ test('Flow F: 左上メニューから設定へ進み禁止文言が出ていな
   await page.getByRole('button', { name: '日文顯示' }).click();
   await expect(page.getByRole('button', { name: '使う', exact: true })).toBeVisible();
   await expect(page.getByText('音声設定')).toBeVisible();
-  await page.getByRole('button', { name: '女性寄り' }).click();
-  await expect(page.getByRole('button', { name: '女性寄り' })).toHaveAttribute('aria-pressed', 'true');
-  await page.getByRole('button', { name: '男性寄り' }).click();
-  await expect(page.getByRole('button', { name: '男性寄り' })).toHaveAttribute('aria-pressed', 'true');
-  await page.getByRole('button', { name: '自動' }).click();
-  await expect(page.getByRole('button', { name: '自動' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('voice-style-natural-soft')).toHaveAttribute('aria-pressed', 'true');
+  await page.getByTestId('voice-style-natural-calm').click();
+  await expect(page.getByTestId('voice-style-natural-calm')).toHaveAttribute('aria-pressed', 'true');
+  await expect
+    .poll(() => page.evaluate(() => window.localStorage.getItem('taiwan-talk-tts-voice-style')))
+    .toBe('natural-calm');
+  await expect(page.getByTestId('voice-preview-natural-soft-ja-JP')).toBeVisible();
+  await expect(page.getByTestId('voice-preview-natural-soft-zh-TW')).toBeVisible();
+  await expect(page.getByText('読み上げ音声はAIで生成されます。')).toBeVisible();
   await expect(page.getByText('端末チェック')).toBeVisible();
   await expect(page.getByText('この端末で音声・録音・保存が使えるか確認します。')).toBeVisible();
   await expect(page.getByRole('button', { name: '音声テスト' })).toBeVisible();
@@ -643,6 +704,54 @@ test('Flow F: 左上メニューから設定へ進み禁止文言が出ていな
   await expectNoForbiddenText(page);
   await expectLogoHealthy(page);
   await expectPageChromeHealthy(page);
+});
+
+test('AI音声: 実voice styleを送り、聞く・ゆっくり・再タップ停止が動く', async ({ page }) => {
+  await page.unroute('**/api/speech/generate');
+  const ttsRequests: Array<{
+    text: string;
+    language: string;
+    voiceStyle: string;
+    speedMode: string;
+  }> = [];
+
+  await page.route('**/api/speech/generate', async (route) => {
+    ttsRequests.push(route.request().postDataJSON());
+    await route.fulfill({
+      status: 200,
+      contentType: 'audio/mpeg',
+      body: Buffer.alloc(512, 1),
+    });
+  });
+
+  await page.goto('/settings');
+  await page.getByTestId('voice-style-natural-calm').click();
+  await page.getByTestId('voice-preview-natural-calm-ja-JP').click();
+  await expect(page.getByTestId('voice-preview-natural-calm-ja-JP')).toContainText('停止');
+  await expect.poll(() => ttsRequests.length).toBe(1);
+  expect(ttsRequests[0]).toMatchObject({
+    language: 'ja-JP',
+    voiceStyle: 'natural-calm',
+    speedMode: 'normal',
+  });
+
+  await page.getByTestId('voice-preview-natural-calm-ja-JP').click();
+  await expect(page.getByTestId('voice-preview-natural-calm-ja-JP')).toContainText('日本語で試す');
+  await expect
+    .poll(() => page.evaluate(() => ((window as unknown as { __audioCalls?: Array<{ action: string }> }).__audioCalls ?? []).some((call) => call.action === 'pause')))
+    .toBe(true);
+
+  await page.goto('/');
+  await page.getByTestId('phrase-main-listen').first().click();
+  await expect(page.getByTestId('phrase-main-listen').first()).toContainText('停止');
+  await page.getByTestId('phrase-main-listen').first().click();
+  await page.getByTestId('phrase-main-slow').first().click();
+  await expect(page.getByTestId('phrase-main-slow').first()).toContainText('停止');
+
+  await expect.poll(() => ttsRequests.length).toBe(3);
+  expect(ttsRequests[1]).toMatchObject({ language: 'zh-TW', voiceStyle: 'natural-calm', speedMode: 'normal' });
+  expect(ttsRequests[2]).toMatchObject({ language: 'zh-TW', voiceStyle: 'natural-calm', speedMode: 'slow' });
+  await expect(page.getByTestId('speech-fallback-notice')).toHaveCount(0);
 });
 
 test('端末チェック: 音声テストと録音テストUIが操作できる', async ({ page }) => {
@@ -655,7 +764,7 @@ test('端末チェック: 音声テストと録音テストUIが操作できる'
 
   await page.getByRole('button', { name: '録音テスト' }).click();
   await expect(page.getByText('録音中')).toBeVisible();
-  await page.getByRole('button', { name: '停止', exact: true }).click();
+  await page.locator('button').filter({ hasText: '停止' }).last().click();
   await expect(page.getByText('録音できました')).toBeVisible();
   await expect(page.getByRole('button', { name: '録音を聞く' })).toBeVisible();
 

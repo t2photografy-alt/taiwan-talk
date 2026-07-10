@@ -181,6 +181,7 @@ export function createConversationService(
         id: createId(overrides.id?.startsWith('draft') ? 'draft' : 'phrase'),
         sourceText: result.sourceText,
         resultText: result.resultText,
+        literalMeaning: result.literalMeaning,
         sourceLanguage: result.sourceLanguage,
         targetLanguage: result.targetLanguage,
         pinyin: result.pinyin,

@@ -23,9 +23,10 @@ type ApiResponse = {
 
 type ModelConversationResult = Omit<
   GeneratedConversationResult,
-  'pinyin' | 'nuance' | 'alternatives' | 'naturalnessNote'
+  'pinyin' | 'literalMeaning' | 'nuance' | 'alternatives' | 'naturalnessNote'
 > & {
   pinyin: string;
+  literalMeaning: string;
   nuance: string | null;
   alternatives: Array<{
     label: string;
@@ -59,6 +60,7 @@ const generationSchema = {
   required: [
     'sourceText',
     'resultText',
+    'literalMeaning',
     'pinyin',
     'sourceLanguage',
     'targetLanguage',
@@ -74,6 +76,7 @@ const generationSchema = {
   properties: {
     sourceText: { type: 'string' },
     resultText: { type: 'string' },
+    literalMeaning: { type: 'string' },
     pinyin: { type: 'string' },
     sourceLanguage: { type: 'string', enum: languages },
     targetLanguage: { type: 'string', enum: languages },
@@ -224,7 +227,15 @@ function buildPrompt(request: GenerateConversationRequest) {
     '日本語直訳っぽさを減らし、カジュアルすぎて失礼にならない表現にしてください。',
     '政治的表現、国旗、国家論争には寄せないでください。',
     'targetLanguage が zh-TW の場合、resultText は繁体字の台湾華語にし、pinyin は resultText の読みを声調記号付きで返してください。',
-    'targetLanguage が ja の場合、resultText は自然な日本語にし、pinyin は sourceText の台湾華語の読みを声調記号付きで返してください。日本語 resultText に対して pinyin を作らないでください。',
+    'targetLanguage が zh-TW の場合、辞書的な逐語訳ではなく、台湾の友達・知人との自然な会話向けにしてください。丁寧すぎず失礼でもない、対面でもSNS/DMでも使いやすい繁体字にしてください。',
+    'targetLanguage が ja の場合、resultText は実際に日本人の友達が対面で話す、またはSNS/DMで送る自然な口語日本語にしてください。辞書的な逐語訳、中国語の語順、不要な主語を残さないでください。',
+    'targetLanguage が ja かつ tone が friendly の場合は自然な友達口調、polite の場合は柔らかい丁寧語、casual の場合はくだけすぎて失礼にならない口語にしてください。',
+    '原文の意図・距離感・感情を変えず、原文より恋愛的に重くしたり、敬語を過剰にしたり、強制的な表現にしないでください。',
+    '「〜することができます」「〜してくださいませ」「本日は」「〜しなければなりません」のような機械翻訳的・接客的な日本語を避けてください。',
+    'targetLanguage が ja の場合、pinyin は sourceText の台湾華語の読みを声調記号付きで返してください。日本語 resultText に対して pinyin を作らないでください。',
+    'literalMeaning は原文に近い意味を短く説明する補助情報です。自然な resultText と役割を分け、必ず空でない文字列にしてください。',
+    '会話向けローカライズ例: 下次也一起玩吧～ → 次もまた一緒に遊ぼうね〜 / 謝謝你幫我拍照！ → 写真撮ってくれてありがとう！ / 明年也要來喔！ → 来年も来てね！',
+    '会話向けローカライズ例: 等一下我把照片傳給你～ → あとで写真送るね〜 / 今天真的很開心！ → friendlyなら「今日ほんと楽しかった！」、politeなら「今日は本当に楽しかったです！」。',
     'pinyin フィールドは必ず空でない文字列にしてください。sourceLanguage または targetLanguage に zh-TW が含まれるため、台湾華語本文の読みを必ず入れてください。',
     '生成結果は短く、対面でスマホ画面を見せる場合にも、SNS/DMで送る場合にも読みやすくしてください。代替案は最大2件です。',
     "needsNativeCheckは必ずtrue、reviewStatusは必ず'needs-native-check'です。ネイティブ確認済みとは書かないでください。",
@@ -267,6 +278,7 @@ function normalizeResult(result: ModelConversationResult, request: GenerateConve
   return {
     sourceText: result.sourceText || request.sourceText,
     resultText: result.resultText.trim(),
+    literalMeaning: result.literalMeaning.trim(),
     pinyin: result.pinyin?.trim() || undefined,
     sourceLanguage: isLanguage(result.sourceLanguage) ? result.sourceLanguage : request.sourceLanguage,
     targetLanguage: isLanguage(result.targetLanguage) ? result.targetLanguage : request.targetLanguage,
@@ -325,6 +337,10 @@ function validateGeneratedResult(
 ): string | null {
   if (!result.resultText.trim()) {
     return 'resultText is empty';
+  }
+
+  if (!result.literalMeaning?.trim()) {
+    return 'literalMeaning is empty';
   }
 
   if (result.targetLanguage !== request.targetLanguage) {
@@ -390,7 +406,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
           content: buildPrompt(request),
         },
       ],
-      max_output_tokens: 900,
+      max_output_tokens: 1100,
       text: {
         format: {
           type: 'json_schema',

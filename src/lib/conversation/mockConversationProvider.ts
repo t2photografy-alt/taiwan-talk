@@ -24,6 +24,7 @@ function resultForJapanese(request: ConversationRequest): ConversationResult {
     return {
       sourceText: normalized,
       resultText: '謝謝你～！',
+      literalMeaning: normalized,
       pinyin: 'xie xie ni',
       sourceLanguage: 'ja',
       targetLanguage: 'zh-TW',
@@ -52,6 +53,7 @@ function resultForJapanese(request: ConversationRequest): ConversationResult {
     return {
       sourceText: normalized,
       resultText: '我們一起拍照吧！',
+      literalMeaning: normalized,
       pinyin: 'wo men yi qi pai zhao ba',
       sourceLanguage: 'ja',
       targetLanguage: 'zh-TW',
@@ -80,6 +82,7 @@ function resultForJapanese(request: ConversationRequest): ConversationResult {
     return {
       sourceText: normalized,
       resultText: '今天的表演真的太棒了！',
+      literalMeaning: normalized,
       pinyin: 'jin tian de biao yan zhen de tai bang le',
       sourceLanguage: 'ja',
       targetLanguage: 'zh-TW',
@@ -107,6 +110,7 @@ function resultForJapanese(request: ConversationRequest): ConversationResult {
   return {
     sourceText: normalized || '久しぶり〜ほんと会いたかったよ！',
     resultText: '好久不見～\n真的很想見你耶！',
+    literalMeaning: normalized || '久しぶりで、本当に会いたかった',
     pinyin: 'hao jiu bu jian\nzhen de hen xiang jian ni ye',
     sourceLanguage: 'ja',
     targetLanguage: 'zh-TW',
@@ -133,19 +137,54 @@ function resultForJapanese(request: ConversationRequest): ConversationResult {
 
 function resultForTaiwaneseMandarin(request: ConversationRequest): ConversationResult {
   const normalized = request.sourceText.trim() || '謝謝你今天來看表演～';
-  const pinyin = normalized.includes('下次')
+  const isPlayAgain = normalized.includes('下次');
+  const isPhotoThanks = normalized.includes('幫我拍照');
+  const isComeNextYear = normalized.includes('明年');
+  const isSendPhoto = normalized.includes('照片');
+  const isHappyToday = normalized.includes('今天真的很開心');
+
+  const resultText = isPlayAgain
+    ? '次もまた一緒に遊ぼうね〜'
+    : isPhotoThanks
+      ? '写真撮ってくれてありがとう！'
+      : isComeNextYear
+        ? '来年も来てね！'
+        : isSendPhoto
+          ? 'あとで写真送るね〜'
+          : isHappyToday
+            ? request.tone === 'polite'
+              ? '今日は本当に楽しかったです！'
+              : '今日ほんと楽しかった！'
+            : '今日は見に来てくれてありがとう〜';
+
+  const pinyin = isPlayAgain
     ? 'xià cì yě yì qǐ wán ba'
-    : normalized.includes('照片')
-      ? 'děng yí xià wǒ bǎ zhào piàn chuán gěi nǐ'
-      : 'xiè xie nǐ jīn tiān lái kàn biǎo yǎn';
+    : isPhotoThanks
+      ? 'xiè xie nǐ bāng wǒ pāi zhào'
+      : isComeNextYear
+        ? 'míng nián yě yào lái o'
+        : isSendPhoto
+          ? 'děng yí xià wǒ bǎ zhào piàn chuán gěi nǐ'
+          : isHappyToday
+            ? 'jīn tiān zhēn de hěn kāi xīn'
+            : 'xiè xie nǐ jīn tiān lái kàn biǎo yǎn';
+
+  const literalMeaning = isPlayAgain
+    ? '次回も一緒に遊びましょう'
+    : isPhotoThanks
+      ? '写真を撮るのを手伝ってくれてありがとう'
+      : isComeNextYear
+        ? '来年も来てね'
+        : isSendPhoto
+          ? '少しあとで写真をあなたに送ります'
+          : isHappyToday
+            ? '今日は本当にうれしかった'
+            : '今日は見に来てくれてありがとう';
 
   return {
     sourceText: normalized,
-    resultText: normalized.includes('下次')
-      ? '次もまた一緒に遊ぼうね〜'
-      : normalized.includes('照片')
-        ? 'あとで写真を送るね〜'
-        : '今日は見に来てくれてありがとう〜',
+    resultText,
+    literalMeaning,
     pinyin,
     sourceLanguage: 'zh-TW',
     targetLanguage: 'ja',
@@ -192,6 +231,7 @@ export const mockConversationProvider: ConversationProvider = {
       happy: {
         sourceText: '今日会えてうれしかったよ！',
         resultText: '今天能見到你，我也很開心！',
+        literalMeaning: '今日会えてうれしかった',
         pinyin: 'jin tian neng jian dao ni wo ye hen kai xin',
         sourceLanguage: 'ja',
         targetLanguage: 'zh-TW',
@@ -203,6 +243,7 @@ export const mockConversationProvider: ConversationProvider = {
       thanks: {
         sourceText: 'こちらこそありがとう！',
         resultText: '我才要謝謝你～！',
+        literalMeaning: 'こちらこそありがとう',
         pinyin: 'wo cai yao xie xie ni',
         sourceLanguage: 'ja',
         targetLanguage: 'zh-TW',
@@ -214,6 +255,7 @@ export const mockConversationProvider: ConversationProvider = {
       seeAgain: {
         sourceText: 'また会いたい！',
         resultText: '我還想再見你！',
+        literalMeaning: 'また会いたい',
         pinyin: 'wo hai xiang zai jian ni',
         sourceLanguage: 'ja',
         targetLanguage: 'zh-TW',
@@ -225,6 +267,7 @@ export const mockConversationProvider: ConversationProvider = {
       askSchedule: {
         sourceText: '次はいつ会える？',
         resultText: '下次什麼時候可以見面？',
+        literalMeaning: '次はいつ会えるか聞く',
         pinyin: 'xia ci shen me shi hou ke yi jian mian',
         sourceLanguage: 'ja',
         targetLanguage: 'zh-TW',
@@ -236,6 +279,7 @@ export const mockConversationProvider: ConversationProvider = {
       softDecline: {
         sourceText: '今回は行けないけど、また会いたいです',
         resultText: '這次沒辦法去，但還是很想再見你。',
+        literalMeaning: '今回は行けないが、また会いたい',
         pinyin: 'zhe ci mei ban fa qu dan hai shi hen xiang zai jian ni',
         sourceLanguage: 'ja',
         targetLanguage: 'zh-TW',
@@ -247,6 +291,7 @@ export const mockConversationProvider: ConversationProvider = {
       sendPhoto: {
         sourceText: 'あとで写真を送るね！',
         resultText: '我等一下把照片傳給你！',
+        literalMeaning: 'あとで写真を送る',
         pinyin: 'wo deng yi xia ba zhao pian chuan gei ni',
         sourceLanguage: 'ja',
         targetLanguage: 'zh-TW',

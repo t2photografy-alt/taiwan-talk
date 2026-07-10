@@ -44,6 +44,9 @@ export function PhraseCard({
   const isNormalPlaying = speechPlayback.isPlaying(phrase.id, 'normal');
   const isSlowPlaying = speechPlayback.isPlaying(phrase.id, 'slow');
   const isOriginalPlaying = speechPlayback.isPlaying(originalSpeechId, 'normal');
+  const isNormalLoading = speechPlayback.isLoading(phrase.id, 'normal');
+  const isSlowLoading = speechPlayback.isLoading(phrase.id, 'slow');
+  const isOriginalLoading = speechPlayback.isLoading(originalSpeechId, 'normal');
 
   if (compact) {
     return (
@@ -121,7 +124,7 @@ export function PhraseCard({
             })
           }
         >
-          {isNormalPlaying ? t('cta.stop') : t('cta.listen')}
+          {isNormalLoading ? t('cta.loading') : isNormalPlaying ? t('cta.stop') : t('cta.listen')}
         </PrimaryButton>
         <PrimaryButton
           data-speech-language={mainSpeechTarget.language}
@@ -138,7 +141,7 @@ export function PhraseCard({
             })
           }
         >
-          {isSlowPlaying ? t('cta.stop') : t('cta.slow')}
+          {isSlowLoading ? t('cta.loading') : isSlowPlaying ? t('cta.stop') : t('cta.slow')}
         </PrimaryButton>
         {originalSpeechTarget ? (
           <PrimaryButton
@@ -157,7 +160,11 @@ export function PhraseCard({
               })
             }
           >
-            {isOriginalPlaying ? t('cta.stop') : t('cta.listenOriginal')}
+            {isOriginalLoading
+              ? t('cta.loading')
+              : isOriginalPlaying
+                ? t('cta.stop')
+                : t('cta.listenOriginal')}
           </PrimaryButton>
         ) : null}
         <PrimaryButton
@@ -178,6 +185,11 @@ export function PhraseCard({
       {speechPlayback.error ? (
         <p className="mt-2 rounded-[12px] bg-white/75 px-3 py-2 text-xs font-bold leading-relaxed text-[#b42318]">
           {speechPlayback.error}
+        </p>
+      ) : null}
+      {speechPlayback.provider === 'browser-fallback' ? (
+        <p className="mt-2 rounded-[12px] bg-white/75 px-3 py-2 text-xs font-bold leading-relaxed text-[#b45309]" data-testid="speech-fallback-notice">
+          {t('speech.fallbackNotice')}
         </p>
       ) : null}
       {onSave ? (

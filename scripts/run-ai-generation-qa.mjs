@@ -175,6 +175,81 @@ const cases = [
     forbiddenKeywords: ['撮らせ', '撮って'],
   },
   {
+    id: 'NJ01',
+    title: '自然な日本語: 友達への誘い',
+    request: {
+      mode: 'compose',
+      sourceText: '下次也一起玩吧～',
+      sourceLanguage: 'zh-TW',
+      targetLanguage: 'ja',
+      tone: 'friendly',
+      category: 'seeAgain',
+    },
+    expected: '自然な友達口調。「次回も一緒に遊びましょう」のような硬い文を避ける。',
+    intentKeywords: ['次', 'また', '一緒', '遊'],
+    forbiddenKeywords: ['愛して'],
+  },
+  {
+    id: 'NJ02',
+    title: '自然な日本語: 写真のお礼',
+    request: {
+      mode: 'compose',
+      sourceText: '謝謝你幫我拍照！',
+      sourceLanguage: 'zh-TW',
+      targetLanguage: 'ja',
+      tone: 'friendly',
+      category: 'thanks',
+    },
+    expected: '「写真撮ってくれてありがとう」の方向。過度な説明をしない。',
+    intentKeywords: ['写真', '撮って', 'ありがとう'],
+    forbiddenKeywords: ['依頼します'],
+  },
+  {
+    id: 'NJ03',
+    title: '自然な日本語: 来年も来て',
+    request: {
+      mode: 'compose',
+      sourceText: '明年也要來喔！',
+      sourceLanguage: 'zh-TW',
+      targetLanguage: 'ja',
+      tone: 'friendly',
+      category: 'seeAgain',
+    },
+    expected: '「来年も来てね」の方向。義務表現にしない。',
+    intentKeywords: ['来年', '来て', 'また'],
+    forbiddenKeywords: ['義務'],
+  },
+  {
+    id: 'NJ04',
+    title: '自然な日本語: 写真を送る',
+    request: {
+      mode: 'compose',
+      sourceText: '等一下我把照片傳給你～',
+      sourceLanguage: 'zh-TW',
+      targetLanguage: 'ja',
+      tone: 'friendly',
+      category: 'photo',
+    },
+    expected: '「あとで写真送るね」の方向。主語を不自然に残さない。',
+    intentKeywords: ['あと', '写真', '送'],
+    forbiddenKeywords: ['撮って'],
+  },
+  {
+    id: 'NJ05',
+    title: '自然な日本語: 丁寧トーン',
+    request: {
+      mode: 'compose',
+      sourceText: '今天真的很開心！',
+      sourceLanguage: 'zh-TW',
+      targetLanguage: 'ja',
+      tone: 'polite',
+      category: 'thanks',
+    },
+    expected: '自然で柔らかい丁寧語。ビジネス敬語にしない。',
+    intentKeywords: ['今日', '楽しかった', 'うれしかった', '嬉しかった'],
+    forbiddenKeywords: ['幸甚', 'ございます'],
+  },
+  {
     id: 'M01',
     title: 'また遊ぼう',
     request: {
@@ -281,6 +356,11 @@ const mockResults = {
   C09: ['請問你會說一點日文嗎？', 'qǐng wèn nǐ huì shuō yì diǎn rì wén ma'],
   ZH01: ['次もまた一緒に遊ぼうね〜', 'xià cì yě yì qǐ wán ba'],
   ZH02: ['あとで写真を送るね〜', 'děng yí xià wǒ bǎ zhào piàn chuán gěi nǐ'],
+  NJ01: ['次もまた一緒に遊ぼうね〜', 'xià cì yě yì qǐ wán ba'],
+  NJ02: ['写真撮ってくれてありがとう！', 'xiè xie nǐ bāng wǒ pāi zhào'],
+  NJ03: ['来年も来てね！', 'míng nián yě yào lái o'],
+  NJ04: ['あとで写真送るね〜', 'děng yí xià wǒ bǎ zhào piàn chuán gěi nǐ'],
+  NJ05: ['今日は本当に楽しかったです！', 'jīn tiān zhēn de hěn kāi xīn'],
   M01: ['好啊，下次再一起玩！', 'hǎo a, xià cì zài yì qǐ wán'],
   M02: ['我也很開心，謝謝你讓我拍照！', 'wǒ yě hěn kāi xīn, xiè xie nǐ ràng wǒ pāi zhào'],
   M03: ['一定會，明年也想再見到你！', 'yí dìng huì, míng nián yě xiǎng zài jiàn dào nǐ'],
@@ -296,6 +376,7 @@ function createMockResponse(testCase, reason) {
     result: {
       sourceText: testCase.request.sourceText,
       resultText,
+      literalMeaning: `原文に近い意味: ${testCase.request.sourceText}`,
       pinyin,
       sourceLanguage: testCase.request.sourceLanguage,
       targetLanguage: testCase.request.targetLanguage,
@@ -335,6 +416,7 @@ function evaluateResult(testCase, payload, httpStatus) {
   const result = payload.result ?? {};
   const resultText = String(result.resultText ?? '');
   const pinyin = String(result.pinyin ?? '');
+  const literalMeaning = String(result.literalMeaning ?? '');
   const checks = [];
 
   const add = (label, ok, severity = 'fail') => {
@@ -344,6 +426,7 @@ function evaluateResult(testCase, payload, httpStatus) {
   add('HTTP status is not 500', httpStatus < 500);
   add('ok true', payload.ok === true);
   add('resultText not empty', resultText.trim().length > 0);
+  add('literalMeaning not empty', literalMeaning.trim().length > 0);
   if (testCase.request.targetLanguage === 'ja') {
     add('Japanese result likely', isJapaneseLikely(resultText));
   } else {
@@ -357,6 +440,22 @@ function evaluateResult(testCase, payload, httpStatus) {
   add('meta.generatedAt exists', typeof payload.meta?.generatedAt === 'string');
   add('intent keyword found', includesAny(resultText, testCase.intentKeywords), 'warn');
   add('no obvious unrelated phrase', !includesAny(resultText, testCase.forbiddenKeywords), 'warn');
+  if (testCase.request.targetLanguage === 'ja') {
+    add(
+      'no obvious dictionary-like Japanese',
+      !includesAny(resultText, [
+        '次回も',
+        'することができます',
+        'あなたに送信します',
+        '本日は',
+        'しなければなりません',
+        'してくださいませ',
+        '撮影を手伝ってくれて',
+      ]),
+      'warn',
+    );
+    add('resultText and literalMeaning have separate roles', resultText.trim() !== literalMeaning.trim(), 'warn');
+  }
 
   const failed = checks.filter((check) => !check.ok && check.severity === 'fail');
   const warnings = checks.filter((check) => !check.ok && check.severity === 'warn');
@@ -512,6 +611,12 @@ function renderReport(results, generatedAt) {
     lines.push('');
     lines.push('```txt');
     lines.push(result.pinyin ?? '');
+    lines.push('```');
+    lines.push('');
+    lines.push('Literal meaning:');
+    lines.push('');
+    lines.push('```txt');
+    lines.push(result.literalMeaning ?? '');
     lines.push('```');
     lines.push('');
     lines.push(`Provider: ${item.provider}`);

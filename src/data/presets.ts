@@ -4,7 +4,6 @@ export type PresetPhrase = Phrase & {
   needsNativeCheck: boolean;
   reviewStatus: PhraseReviewStatus;
   usageScene: string;
-  literalMeaning?: string;
   naturalnessNote: string;
   reviewerNote?: string;
 };

@@ -302,7 +302,11 @@ export function PracticePage({
               })
             }
           >
-            {speechPlayback.isPlaying(selectedPhrase.id, 'normal') ? t('cta.stop') : t('cta.listen')}
+            {speechPlayback.isLoading(selectedPhrase.id, 'normal')
+              ? t('cta.loading')
+              : speechPlayback.isPlaying(selectedPhrase.id, 'normal')
+                ? t('cta.stop')
+                : t('cta.listen')}
           </PrimaryButton>
           <PrimaryButton
             data-speech-language="zh-TW"
@@ -319,12 +323,21 @@ export function PracticePage({
               })
             }
           >
-            {speechPlayback.isPlaying(selectedPhrase.id, 'slow') ? t('cta.stop') : t('cta.slowListen')}
+            {speechPlayback.isLoading(selectedPhrase.id, 'slow')
+              ? t('cta.loading')
+              : speechPlayback.isPlaying(selectedPhrase.id, 'slow')
+                ? t('cta.stop')
+                : t('cta.slowListen')}
           </PrimaryButton>
         </div>
         {speechPlayback.error ? (
           <p className="mt-2 rounded-[12px] bg-[#fff7f7] px-3 py-2 text-xs font-bold leading-relaxed text-[#b42318]">
             {speechPlayback.error}
+          </p>
+        ) : null}
+        {speechPlayback.provider === 'browser-fallback' ? (
+          <p className="mt-2 rounded-[12px] bg-[#fffaf0] px-3 py-2 text-xs font-bold leading-relaxed text-[#b45309]" data-testid="speech-fallback-notice">
+            {t('speech.fallbackNotice')}
           </p>
         ) : null}
       </section>

@@ -8,19 +8,21 @@ import { useDisplayLanguage } from '../../lib/displayLanguage/DisplayLanguagePro
 import type { TranslationKey } from '../../lib/displayLanguage/types';
 import { recorderService } from '../../lib/recorder/recorderService';
 import type { RecordedAudio, RecorderSession } from '../../lib/recorder/types';
-import { speechService } from '../../lib/speech/speechService';
-import type { VoicePreference } from '../../lib/speech/types';
-import { readVoicePreference, writeVoicePreference } from '../../lib/speech/voicePreference';
+import type { TtsLanguage, TtsVoiceStyle } from '../../lib/speech/types';
+import { useSpeechPlayback } from '../../lib/speech/useSpeechPlayback';
+import { readTtsVoiceStyle, writeTtsVoiceStyle } from '../../lib/speech/voiceStyle';
 
 type SettingsPageProps = {
   onNavigate: (path: string) => void;
 };
 
-const SPEECH_TEST_TEXT = '你好，這是 Taiwan Talk 的聲音測試。';
-const voicePreferenceOptions: Array<{ value: VoicePreference; labelKey: TranslationKey }> = [
-  { value: 'auto', labelKey: 'settings.voiceAuto' },
-  { value: 'female', labelKey: 'settings.voiceFemale' },
-  { value: 'male', labelKey: 'settings.voiceMale' },
+const speechPreviewText: Record<TtsLanguage, string> = {
+  'ja-JP': 'また会えてうれしい！今日もよろしくね。',
+  'zh-TW': '又見到你真的很開心！今天也請多多指教。',
+};
+const voiceStyleOptions: Array<{ value: TtsVoiceStyle; labelKey: TranslationKey }> = [
+  { value: 'natural-soft', labelKey: 'settings.voiceSoft' },
+  { value: 'natural-calm', labelKey: 'settings.voiceCalm' },
 ];
 type TFunction = (key: TranslationKey) => string;
 
@@ -87,9 +89,10 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
   const [recordingStatusKey, setRecordingStatusKey] = useState<TranslationKey>('settings.notRun');
   const [isRecording, setIsRecording] = useState(false);
   const [recordedAudio, setRecordedAudio] = useState<RecordedAudio | null>(null);
-  const [voicePreference, setVoicePreference] = useState<VoicePreference>(() => readVoicePreference());
+  const [voiceStyle, setVoiceStyle] = useState<TtsVoiceStyle>(() => readTtsVoiceStyle());
   const recorderSessionRef = useRef<RecorderSession | null>(null);
   const { t } = useDisplayLanguage();
+  const speechPlayback = useSpeechPlayback();
 
   const refreshCapabilities = useCallback(async () => {
     const nextCapabilities = await deviceCapabilities.getSnapshot();
@@ -117,32 +120,27 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
   useEffect(
     () => () => {
       recorderSessionRef.current?.cancel();
-      speechService.stop();
     },
     [],
   );
 
   useEffect(() => () => recorderService.releaseRecording(recordedAudio), [recordedAudio]);
 
-  const handleSpeechTest = () => {
-    const result = speechService.speak(SPEECH_TEST_TEXT, {
-      language: 'zh-TW',
-      voicePreference,
-      callbacks: {
-        onError: () => {
-          setAudioStatusKey('settings.speechUnavailable');
-        },
-      },
+  const handleSpeechPreview = (style: TtsVoiceStyle, language: TtsLanguage) => {
+    setVoiceStyle(style);
+    writeTtsVoiceStyle(style);
+    setAudioStatusKey('settings.speechPlayed');
+    void speechPlayback.toggle({
+      phraseId: `settings-preview:${style}:${language}`,
+      text: speechPreviewText[language],
+      language,
+      speed: 'normal',
+      voiceStyle: style,
     });
-
-    if (result.ok) {
-      setAudioStatusKey('settings.speechPlayed');
-    } else {
-      setAudioStatusKey('settings.speechUnavailable');
-    }
-
     void refreshCapabilities();
   };
+
+  const handleSpeechTest = () => handleSpeechPreview(voiceStyle, 'zh-TW');
 
   const stopRecordingTest = async () => {
     const session = recorderSessionRef.current;
@@ -203,10 +201,15 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
     });
   };
 
-  const handleVoicePreferenceChange = (preference: VoicePreference) => {
-    setVoicePreference(preference);
-    writeVoicePreference(preference);
+  const handleVoiceStyleChange = (style: TtsVoiceStyle) => {
+    speechPlayback.stop();
+    setVoiceStyle(style);
+    writeTtsVoiceStyle(style);
   };
+
+  useEffect(() => {
+    if (speechPlayback.error) setAudioStatusKey('settings.speechUnavailable');
+  }, [speechPlayback.error]);
 
   return (
     <div>
@@ -245,28 +248,67 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
           <p className="mb-3 text-sm font-bold leading-relaxed text-[#344054]">
             {t('settings.voiceDescription')}
           </p>
-          <div className="grid grid-cols-3 gap-2">
-            {voicePreferenceOptions.map((item) => {
-              const selected = voicePreference === item.value;
+          <div className="divide-y divide-[#e5ebf3] border-y border-[#e5ebf3]">
+            {voiceStyleOptions.map((item) => {
+              const selected = voiceStyle === item.value;
 
               return (
-                <button
-                  key={item.value}
-                  aria-pressed={selected}
-                  className={[
-                    'min-h-11 rounded-[14px] border px-2 text-sm font-black whitespace-nowrap transition focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-200',
-                    selected
-                      ? 'border-[var(--brand-blue)] bg-[#eef6ff] text-[var(--brand-blue)]'
-                      : 'border-[#d9e1ee] bg-white text-[#344054] active:bg-[#f3f6fb]',
-                  ].join(' ')}
-                  type="button"
-                  onClick={() => handleVoicePreferenceChange(item.value)}
-                >
-                  {t(item.labelKey)}
-                </button>
+                <div className="py-3 first:pt-0 last:pb-0" key={item.value}>
+                  <button
+                    aria-pressed={selected}
+                    className={[
+                      'flex min-h-11 w-full items-center justify-between gap-3 rounded-[14px] border px-3 text-left text-sm font-black whitespace-nowrap transition focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-200',
+                      selected
+                        ? 'border-[var(--brand-blue)] bg-[#eef6ff] text-[var(--brand-blue)]'
+                        : 'border-[#d9e1ee] bg-white text-[#344054] active:bg-[#f3f6fb]',
+                    ].join(' ')}
+                    data-testid={`voice-style-${item.value}`}
+                    type="button"
+                    onClick={() => handleVoiceStyleChange(item.value)}
+                  >
+                    <span>{t(item.labelKey)}</span>
+                    <span aria-hidden="true" className={selected ? 'text-[var(--brand-blue)]' : 'text-[#98a2b3]'}>
+                      {selected ? '●' : '○'}
+                    </span>
+                  </button>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    {(['ja-JP', 'zh-TW'] as const).map((language) => {
+                      const previewId = `settings-preview:${item.value}:${language}`;
+                      const loading = speechPlayback.isLoading(previewId, 'normal');
+                      const playing = speechPlayback.isPlaying(previewId, 'normal');
+
+                      return (
+                        <PrimaryButton
+                          data-testid={`voice-preview-${item.value}-${language}`}
+                          icon={playing ? <Square aria-hidden="true" size={16} /> : <Volume2 aria-hidden="true" size={17} />}
+                          variant="soft"
+                          onClick={() => handleSpeechPreview(item.value, language)}
+                          key={language}
+                        >
+                          {loading
+                            ? t('cta.loading')
+                            : playing
+                              ? t('cta.stop')
+                              : t(language === 'ja-JP' ? 'settings.previewJa' : 'settings.previewZh')}
+                        </PrimaryButton>
+                      );
+                    })}
+                  </div>
+                </div>
               );
             })}
           </div>
+          <p className="mt-3 text-xs font-bold leading-relaxed text-[#667085]">
+            {t('settings.voiceAiNote')}
+          </p>
+          {speechPlayback.provider === 'browser-fallback' ? (
+            <p className="mt-2 text-xs font-bold leading-relaxed text-[#b45309]" data-testid="speech-fallback-notice">
+              {t('speech.fallbackNotice')}
+            </p>
+          ) : null}
+          {speechPlayback.error ? (
+            <p className="mt-2 text-xs font-bold leading-relaxed text-[#b42318]">{speechPlayback.error}</p>
+          ) : null}
         </article>
 
         <article className="glass-card rounded-[20px] p-4">
