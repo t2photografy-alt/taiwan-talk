@@ -10,10 +10,11 @@ export type SpeechLanguage = TtsLanguage;
 
 export type SpeechProvider = 'openai-tts' | 'browser-fallback';
 
+export type SpeechStatus = 'idle' | 'loading' | 'playing' | 'stopping' | 'error';
+
 export type SpeechPlaybackState = {
   provider?: SpeechProvider;
-  isLoading: boolean;
-  isPlaying: boolean;
+  status: SpeechStatus;
   playingKey?: string;
   error?: string;
 };
@@ -22,7 +23,9 @@ export type SpeechPlaybackCallbacks = {
   onStart?: (provider: SpeechProvider) => void;
   onEnd?: () => void;
   onError?: (message: string) => void;
+  onPause?: () => void;
   onProviderChange?: (provider: SpeechProvider) => void;
+  onResume?: (provider: SpeechProvider) => void;
 };
 
 export type SpeechPlaybackOptions = {

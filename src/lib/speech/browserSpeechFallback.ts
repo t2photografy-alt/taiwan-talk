@@ -56,8 +56,16 @@ class BrowserSpeechFallback {
   }
 
   stop() {
-    getSpeechSynthesis()?.cancel();
+    const utterance = this.activeUtterance;
     this.activeUtterance = null;
+    if (utterance) {
+      utterance.onstart = null;
+      utterance.onend = null;
+      utterance.onerror = null;
+      utterance.onpause = null;
+      utterance.onresume = null;
+    }
+    getSpeechSynthesis()?.cancel();
   }
 
   speak(
@@ -85,21 +93,30 @@ class BrowserSpeechFallback {
       if (voice) utterance.voice = voice;
 
       utterance.onstart = () => {
+        if (this.activeUtterance !== utterance) return;
         this.activeUtterance = utterance;
+        callbacks?.onProviderChange?.('browser-fallback');
+        callbacks?.onStart?.('browser-fallback');
       };
       utterance.onend = () => {
-        if (this.activeUtterance === utterance) this.activeUtterance = null;
+        if (this.activeUtterance !== utterance) return;
+        this.activeUtterance = null;
         callbacks?.onEnd?.();
       };
       utterance.onerror = () => {
-        if (this.activeUtterance === utterance) this.activeUtterance = null;
+        if (this.activeUtterance !== utterance) return;
+        this.activeUtterance = null;
         callbacks?.onError?.('端末の音声でも再生できませんでした。');
+      };
+      utterance.onpause = () => {
+        if (this.activeUtterance === utterance) callbacks?.onPause?.();
+      };
+      utterance.onresume = () => {
+        if (this.activeUtterance === utterance) callbacks?.onResume?.('browser-fallback');
       };
 
       this.activeUtterance = utterance;
       synthesis.speak(utterance);
-      callbacks?.onProviderChange?.('browser-fallback');
-      callbacks?.onStart?.('browser-fallback');
       return { ok: true, provider: 'browser-fallback' };
     } catch {
       this.activeUtterance = null;

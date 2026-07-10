@@ -17,6 +17,20 @@ import type {
 const photoIntentPattern = /写真|撮|撮らせ|拍|照/;
 const photoResultPattern = /拍|照|照片|相片/;
 const seeAgainReplyPattern = /下次|再|見|一起|玩/;
+const kanaPattern = /[ぁ-んァ-ン]/;
+const traditionalChinesePattern = /[\u3400-\u9fff]/;
+const chinesePunctuationPattern = /[，：；]/;
+const simplifiedChinesePattern = /[这为会发后里么让给说还没过时国门间]/g;
+const obviousTaiwanMandarinPattern = /[來喔嗎這給傳謝開個點讓還沒為說]/;
+
+function hasNaturalJapaneseShape(text: string) {
+  return (
+    kanaPattern.test(text) ||
+    (!chinesePunctuationPattern.test(text) &&
+      !obviousTaiwanMandarinPattern.test(text) &&
+      /[\u3400-\u9fff々〆ヶ。！？]/.test(text))
+  );
+}
 
 export type ConversationService = {
   generate(request: ConversationRequest): Promise<ConversationResult>;
@@ -92,9 +106,31 @@ function isApiResultUsable(
 ) {
   if (
     !result.resultText.trim() ||
+    !result.literalMeaning?.trim() ||
+    result.literalMeaning.length > 500 ||
+    result.resultText.trim() === result.literalMeaning.trim() ||
     result.targetLanguage !== request.targetLanguage ||
     result.needsNativeCheck !== true ||
     result.reviewStatus !== 'needs-native-check'
+  ) {
+    return false;
+  }
+
+  if (
+    request.targetLanguage === 'ja' &&
+    (!hasNaturalJapaneseShape(result.resultText) ||
+      !hasNaturalJapaneseShape(result.literalMeaning) ||
+      chinesePunctuationPattern.test(result.literalMeaning) ||
+      (result.literalMeaning.match(simplifiedChinesePattern) ?? []).length >= 2)
+  ) {
+    return false;
+  }
+
+  if (
+    request.targetLanguage === 'zh-TW' &&
+    (!traditionalChinesePattern.test(result.resultText) ||
+      !traditionalChinesePattern.test(result.literalMeaning) ||
+      kanaPattern.test(result.literalMeaning))
   ) {
     return false;
   }

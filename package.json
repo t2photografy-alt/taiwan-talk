@@ -11,7 +11,8 @@
     "qa:flow:headed": "node scripts/run-playwright.mjs tests/e2e/user-flows.spec.ts --headed",
     "qa:screenshots": "node scripts/run-playwright.mjs tests/e2e/screenshots.spec.ts",
     "qa:ai-generation": "node scripts/run-ai-generation-qa.mjs",
-    "qa:tts": "node --experimental-strip-types scripts/run-tts-qa.mjs"
+    "qa:tts": "node --experimental-strip-types scripts/run-tts-qa.mjs",
+    "qa:api-contract": "node --experimental-strip-types scripts/run-api-contract-qa.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "latest",

@@ -24,7 +24,7 @@ function resultForJapanese(request: ConversationRequest): ConversationResult {
     return {
       sourceText: normalized,
       resultText: '謝謝你～！',
-      literalMeaning: normalized,
+      literalMeaning: '謝謝你。',
       pinyin: 'xie xie ni',
       sourceLanguage: 'ja',
       targetLanguage: 'zh-TW',
@@ -53,7 +53,7 @@ function resultForJapanese(request: ConversationRequest): ConversationResult {
     return {
       sourceText: normalized,
       resultText: '我們一起拍照吧！',
-      literalMeaning: normalized,
+      literalMeaning: '我們一起拍照。',
       pinyin: 'wo men yi qi pai zhao ba',
       sourceLanguage: 'ja',
       targetLanguage: 'zh-TW',
@@ -82,7 +82,7 @@ function resultForJapanese(request: ConversationRequest): ConversationResult {
     return {
       sourceText: normalized,
       resultText: '今天的表演真的太棒了！',
-      literalMeaning: normalized,
+      literalMeaning: '今天的表演非常精彩。',
       pinyin: 'jin tian de biao yan zhen de tai bang le',
       sourceLanguage: 'ja',
       targetLanguage: 'zh-TW',
@@ -110,7 +110,7 @@ function resultForJapanese(request: ConversationRequest): ConversationResult {
   return {
     sourceText: normalized || '久しぶり〜ほんと会いたかったよ！',
     resultText: '好久不見～\n真的很想見你耶！',
-    literalMeaning: normalized || '久しぶりで、本当に会いたかった',
+    literalMeaning: '很久不見，我真的很想見你。',
     pinyin: 'hao jiu bu jian\nzhen de hen xiang jian ni ye',
     sourceLanguage: 'ja',
     targetLanguage: 'zh-TW',
@@ -174,9 +174,9 @@ function resultForTaiwaneseMandarin(request: ConversationRequest): ConversationR
     : isPhotoThanks
       ? '写真を撮るのを手伝ってくれてありがとう'
       : isComeNextYear
-        ? '来年も来てね'
+        ? '来年も来てくださいね。'
         : isSendPhoto
-          ? '少しあとで写真をあなたに送ります'
+          ? 'あとで写真を送ります。'
           : isHappyToday
             ? '今日は本当にうれしかった'
             : '今日は見に来てくれてありがとう';
@@ -231,7 +231,7 @@ export const mockConversationProvider: ConversationProvider = {
       happy: {
         sourceText: '今日会えてうれしかったよ！',
         resultText: '今天能見到你，我也很開心！',
-        literalMeaning: '今日会えてうれしかった',
+        literalMeaning: '今天見到你，我很開心。',
         pinyin: 'jin tian neng jian dao ni wo ye hen kai xin',
         sourceLanguage: 'ja',
         targetLanguage: 'zh-TW',
@@ -243,7 +243,7 @@ export const mockConversationProvider: ConversationProvider = {
       thanks: {
         sourceText: 'こちらこそありがとう！',
         resultText: '我才要謝謝你～！',
-        literalMeaning: 'こちらこそありがとう',
+        literalMeaning: '我才應該謝謝你。',
         pinyin: 'wo cai yao xie xie ni',
         sourceLanguage: 'ja',
         targetLanguage: 'zh-TW',
@@ -255,7 +255,7 @@ export const mockConversationProvider: ConversationProvider = {
       seeAgain: {
         sourceText: 'また会いたい！',
         resultText: '我還想再見你！',
-        literalMeaning: 'また会いたい',
+        literalMeaning: '我還想再見到你。',
         pinyin: 'wo hai xiang zai jian ni',
         sourceLanguage: 'ja',
         targetLanguage: 'zh-TW',
@@ -267,7 +267,7 @@ export const mockConversationProvider: ConversationProvider = {
       askSchedule: {
         sourceText: '次はいつ会える？',
         resultText: '下次什麼時候可以見面？',
-        literalMeaning: '次はいつ会えるか聞く',
+        literalMeaning: '詢問下次什麼時候能見面。',
         pinyin: 'xia ci shen me shi hou ke yi jian mian',
         sourceLanguage: 'ja',
         targetLanguage: 'zh-TW',
@@ -279,7 +279,7 @@ export const mockConversationProvider: ConversationProvider = {
       softDecline: {
         sourceText: '今回は行けないけど、また会いたいです',
         resultText: '這次沒辦法去，但還是很想再見你。',
-        literalMeaning: '今回は行けないが、また会いたい',
+        literalMeaning: '這次不能去，但還想再見面。',
         pinyin: 'zhe ci mei ban fa qu dan hai shi hen xiang zai jian ni',
         sourceLanguage: 'ja',
         targetLanguage: 'zh-TW',
@@ -291,7 +291,7 @@ export const mockConversationProvider: ConversationProvider = {
       sendPhoto: {
         sourceText: 'あとで写真を送るね！',
         resultText: '我等一下把照片傳給你！',
-        literalMeaning: 'あとで写真を送る',
+        literalMeaning: '晚一點會把照片傳給你。',
         pinyin: 'wo deng yi xia ba zhao pian chuan gei ni',
         sourceLanguage: 'ja',
         targetLanguage: 'zh-TW',

@@ -47,6 +47,9 @@ export function PhraseCard({
   const isNormalLoading = speechPlayback.isLoading(phrase.id, 'normal');
   const isSlowLoading = speechPlayback.isLoading(phrase.id, 'slow');
   const isOriginalLoading = speechPlayback.isLoading(originalSpeechId, 'normal');
+  const isNormalStopping = speechPlayback.isStopping(phrase.id, 'normal');
+  const isSlowStopping = speechPlayback.isStopping(phrase.id, 'slow');
+  const isOriginalStopping = speechPlayback.isStopping(originalSpeechId, 'normal');
 
   if (compact) {
     return (
@@ -124,7 +127,13 @@ export function PhraseCard({
             })
           }
         >
-          {isNormalLoading ? t('cta.loading') : isNormalPlaying ? t('cta.stop') : t('cta.listen')}
+          {isNormalLoading
+            ? t('cta.loading')
+            : isNormalStopping
+              ? t('cta.stopping')
+              : isNormalPlaying
+                ? t('cta.stop')
+                : t('cta.listen')}
         </PrimaryButton>
         <PrimaryButton
           data-speech-language={mainSpeechTarget.language}
@@ -141,7 +150,13 @@ export function PhraseCard({
             })
           }
         >
-          {isSlowLoading ? t('cta.loading') : isSlowPlaying ? t('cta.stop') : t('cta.slow')}
+          {isSlowLoading
+            ? t('cta.loading')
+            : isSlowStopping
+              ? t('cta.stopping')
+              : isSlowPlaying
+                ? t('cta.stop')
+                : t('cta.slow')}
         </PrimaryButton>
         {originalSpeechTarget ? (
           <PrimaryButton
@@ -162,9 +177,11 @@ export function PhraseCard({
           >
             {isOriginalLoading
               ? t('cta.loading')
-              : isOriginalPlaying
-                ? t('cta.stop')
-                : t('cta.listenOriginal')}
+              : isOriginalStopping
+                ? t('cta.stopping')
+                : isOriginalPlaying
+                  ? t('cta.stop')
+                  : t('cta.listenOriginal')}
           </PrimaryButton>
         ) : null}
         <PrimaryButton

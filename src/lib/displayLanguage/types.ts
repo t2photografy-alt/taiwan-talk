@@ -34,6 +34,7 @@ export type TranslationKey =
   | 'cta.slow'
   | 'cta.slowListen'
   | 'cta.stop'
+  | 'cta.stopping'
   | 'cta.loading'
   | 'cta.largeDisplay'
   | 'cta.practice'

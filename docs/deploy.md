@@ -7,7 +7,9 @@ npm install
 npm run build
 npm run qa:flow
 npm run qa:screenshots
+npm run qa:ai-generation
 npm run qa:tts
+npm run qa:api-contract
 ```
 
 ## Git
@@ -110,3 +112,5 @@ npm run qa:flow
 ```
 
 Production release checks must include `qa:flow`, `qa:ai-generation`, and `qa:tts`. AI voice quality itself remains a human/device review item.
+
+`qa:api-contract` runs locally with injected mock generators and does not need Production access or a real OpenAI call. If the execution environment blocks outbound HTTPS with `ERR_NETWORK_ACCESS_DENIED` or `EACCES`, do not classify that alone as a Production failure. Record the local contract result and rerun the three `BASE_URL` commands from a network-enabled environment.

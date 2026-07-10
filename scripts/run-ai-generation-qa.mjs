@@ -250,6 +250,36 @@ const cases = [
     forbiddenKeywords: ['幸甚', 'ございます'],
   },
   {
+    id: 'LM01',
+    title: '原文に近い意味: 来年表現',
+    request: {
+      mode: 'compose',
+      sourceText: '明年也要來喔！',
+      sourceLanguage: 'zh-TW',
+      targetLanguage: 'ja',
+      tone: 'friendly',
+      category: 'seeAgain',
+    },
+    expected: 'resultTextは友達向け、literalMeaningは「来年」を使う自然で短い補助文。',
+    intentKeywords: ['来年', '来て'],
+    forbiddenKeywords: ['義務'],
+  },
+  {
+    id: 'LM02',
+    title: '原文に近い意味: 写真送付',
+    request: {
+      mode: 'compose',
+      sourceText: '等一下我把照片傳給你～',
+      sourceLanguage: 'zh-TW',
+      targetLanguage: 'ja',
+      tone: 'friendly',
+      category: 'photo',
+    },
+    expected: 'resultTextは会話文、literalMeaningは自然な語順の「あとで写真を送ります」系。',
+    intentKeywords: ['あと', '写真', '送'],
+    forbiddenKeywords: ['撮って'],
+  },
+  {
     id: 'M01',
     title: 'また遊ぼう',
     request: {
@@ -361,6 +391,8 @@ const mockResults = {
   NJ03: ['来年も来てね！', 'míng nián yě yào lái o'],
   NJ04: ['あとで写真送るね〜', 'děng yí xià wǒ bǎ zhào piàn chuán gěi nǐ'],
   NJ05: ['今日は本当に楽しかったです！', 'jīn tiān zhēn de hěn kāi xīn'],
+  LM01: ['来年も来てね！', 'míng nián yě yào lái o'],
+  LM02: ['あとで写真送るね〜', 'děng yí xià wǒ bǎ zhào piàn chuán gěi nǐ'],
   M01: ['好啊，下次再一起玩！', 'hǎo a, xià cì zài yì qǐ wán'],
   M02: ['我也很開心，謝謝你讓我拍照！', 'wǒ yě hěn kāi xīn, xiè xie nǐ ràng wǒ pāi zhào'],
   M03: ['一定會，明年也想再見到你！', 'yí dìng huì, míng nián yě xiǎng zài jiàn dào nǐ'],
@@ -368,15 +400,31 @@ const mockResults = {
   M05: ['不好意思，今天晚上我有點不方便，下次有機會再一起吃飯。', 'bù hǎo yì si, jīn tiān wǎn shàng wǒ yǒu diǎn bù fāng biàn, xià cì yǒu jī huì zài yì qǐ chī fàn'],
 };
 
+const mockJapaneseLiteralMeanings = {
+  ZH01: '次回も一緒に遊びましょう。',
+  ZH02: 'あとで写真を送ります。',
+  NJ01: '次回も一緒に遊びましょう。',
+  NJ02: '写真を撮ってくれてありがとう。',
+  NJ03: '来年も来てくださいね。',
+  NJ04: 'あとで写真を送ります。',
+  NJ05: '今日は本当に楽しかったです。',
+  LM01: '来年も来てくださいね。',
+  LM02: 'あとで写真を送ります。',
+};
+
 function createMockResponse(testCase, reason) {
   const [resultText, pinyin] = mockResults[testCase.id] ?? ['好啊！', 'hǎo a'];
+  const literalMeaning =
+    testCase.request.targetLanguage === 'ja'
+      ? mockJapaneseLiteralMeanings[testCase.id] ?? '原文の意味を自然な日本語で確認します。'
+      : `原意是「${resultText.replace(/[！。]$/, '')}」。`;
 
   return {
     ok: true,
     result: {
       sourceText: testCase.request.sourceText,
       resultText,
-      literalMeaning: `原文に近い意味: ${testCase.request.sourceText}`,
+      literalMeaning,
       pinyin,
       sourceLanguage: testCase.request.sourceLanguage,
       targetLanguage: testCase.request.targetLanguage,
@@ -429,8 +477,10 @@ function evaluateResult(testCase, payload, httpStatus) {
   add('literalMeaning not empty', literalMeaning.trim().length > 0);
   if (testCase.request.targetLanguage === 'ja') {
     add('Japanese result likely', isJapaneseLikely(resultText));
+    add('Japanese literalMeaning likely', isJapaneseLikely(literalMeaning));
   } else {
     add('Traditional Chinese likely', isTraditionalChineseLikely(resultText), 'warn');
+    add('Traditional Chinese literalMeaning likely', isTraditionalChineseLikely(literalMeaning), 'warn');
   }
   add('pinyin exists', pinyin.trim().length > 0);
   add('pinyin has tone marks', hasToneMarkedPinyin(pinyin), 'warn');
@@ -454,7 +504,19 @@ function evaluateResult(testCase, payload, httpStatus) {
       ]),
       'warn',
     );
-    add('resultText and literalMeaning have separate roles', resultText.trim() !== literalMeaning.trim(), 'warn');
+    add('resultText and literalMeaning have separate roles', resultText.trim() !== literalMeaning.trim());
+    add(
+      'literalMeaning avoids known unnatural Japanese',
+      !includesAny(literalMeaning, [
+        '明年も',
+        '少し後で私は',
+        'あなたに送信します',
+        'することができます',
+        'しなければなりません',
+        'してくださいませ',
+      ]),
+      'warn',
+    );
   }
 
   const failed = checks.filter((check) => !check.ok && check.severity === 'fail');

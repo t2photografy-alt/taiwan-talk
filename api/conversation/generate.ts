@@ -11,6 +11,7 @@ import type { LanguageCode, PhraseCategory, Tone } from '../../src/lib/conversat
 
 type ApiRequest = {
   method?: string;
+  headers?: Record<string, string | string[] | undefined>;
   body?: unknown;
 };
 
@@ -37,6 +38,16 @@ type ModelConversationResult = Omit<
   naturalnessNote: string | null;
 };
 
+type ConversationGeneratorInput = {
+  model: string;
+  prompt: string;
+  request: GenerateConversationRequest;
+};
+
+export type ConversationGenerator = (
+  input: ConversationGeneratorInput,
+) => Promise<ModelConversationResult>;
+
 const DEFAULT_MODEL = 'gpt-4.1-mini';
 const tones: Tone[] = ['friendly', 'polite', 'casual', 'event', 'dm'];
 const categories: PhraseCategory[] = [
@@ -53,6 +64,17 @@ const languages: LanguageCode[] = ['ja', 'zh-TW'];
 const DEFAULT_NATURALNESS_NOTE = 'AI生成結果のため、台湾華語表現はネイティブ確認前です。';
 const photoIntentPattern = /写真|撮|撮らせ|拍|照/;
 const photoResultPattern = /拍|照|照片|相片/;
+const japaneseLiteralWarningPatterns = [
+  /明年も/,
+  /少し後で私は/,
+  /あなたに送信します/,
+  /することができます/,
+  /しなければなりません/,
+  /してくださいませ/,
+];
+const chinesePunctuationPattern = /[，：；]/;
+const simplifiedChinesePattern = /[这为会发后里么让给说还没过时国门间]/g;
+const obviousTaiwanMandarinPattern = /[來喔嗎這給傳謝開個點讓還沒為說]/;
 
 const generationSchema = {
   type: 'object',
@@ -153,6 +175,8 @@ function validateRequest(body: unknown): GenerateConversationRequest | null {
   if (
     !['quick', 'compose', 'message-reply'].includes(String(mode)) ||
     typeof candidate.sourceText !== 'string' ||
+    candidate.sourceText.trim().length === 0 ||
+    candidate.sourceText.length > 500 ||
     !isLanguage(candidate.sourceLanguage) ||
     !isLanguage(candidate.targetLanguage) ||
     !isTone(candidate.tone)
@@ -162,7 +186,7 @@ function validateRequest(body: unknown): GenerateConversationRequest | null {
 
   return {
     mode: mode as GenerateConversationRequest['mode'],
-    sourceText: candidate.sourceText.slice(0, 500),
+    sourceText: candidate.sourceText.trim(),
     sourceLanguage: candidate.sourceLanguage,
     targetLanguage: candidate.targetLanguage,
     tone: candidate.tone,
@@ -233,7 +257,11 @@ function buildPrompt(request: GenerateConversationRequest) {
     '原文の意図・距離感・感情を変えず、原文より恋愛的に重くしたり、敬語を過剰にしたり、強制的な表現にしないでください。',
     '「〜することができます」「〜してくださいませ」「本日は」「〜しなければなりません」のような機械翻訳的・接客的な日本語を避けてください。',
     'targetLanguage が ja の場合、pinyin は sourceText の台湾華語の読みを声調記号付きで返してください。日本語 resultText に対して pinyin を作らないでください。',
-    'literalMeaning は原文に近い意味を短く説明する補助情報です。自然な resultText と役割を分け、必ず空でない文字列にしてください。',
+    'resultText: A natural conversational localization that the user can actually say or send.',
+    'literalMeaning: A short, natural explanation in the target language that stays closer to the source meaning. It must not preserve unnatural source-language word order or vocabulary. It must not duplicate resultText exactly.',
+    'literalMeaning は対象言語で、一文または短い句として書いてください。resultTextより会話的に盛らず、原文にない感情を追加しないでください。',
+    'targetLanguage が ja の literalMeaning は、現代の自然な日本語にしてください。日常的な表示では「明年」より「来年」を優先し、中国語由来の語順、不要な代名詞、教科書調・機械翻訳調を避けてください。',
+    'targetLanguage が zh-TW の literalMeaning は、自然な繁体字の台湾華語にし、日本語を残さないでください。',
     '会話向けローカライズ例: 下次也一起玩吧～ → 次もまた一緒に遊ぼうね〜 / 謝謝你幫我拍照！ → 写真撮ってくれてありがとう！ / 明年也要來喔！ → 来年も来てね！',
     '会話向けローカライズ例: 等一下我把照片傳給你～ → あとで写真送るね〜 / 今天真的很開心！ → friendlyなら「今日ほんと楽しかった！」、politeなら「今日は本当に楽しかったです！」。',
     'pinyin フィールドは必ず空でない文字列にしてください。sourceLanguage または targetLanguage に zh-TW が含まれるため、台湾華語本文の読みを必ず入れてください。',
@@ -310,6 +338,48 @@ function appendNaturalnessNote(note: string | undefined, addition: string) {
   return note.includes(addition) ? note : `${note} ${addition}`;
 }
 
+function hasJapaneseKana(text: string) {
+  return /[ぁ-んァ-ン]/.test(text);
+}
+
+function hasTraditionalChineseText(text: string) {
+  return /[\u3400-\u9fff]/.test(text) && !hasJapaneseKana(text);
+}
+
+function hasNaturalJapaneseShape(text: string) {
+  return (
+    hasJapaneseKana(text) ||
+    (!chinesePunctuationPattern.test(text) &&
+      !obviousTaiwanMandarinPattern.test(text) &&
+      /[\u3400-\u9fff々〆ヶ。！？]/.test(text))
+  );
+}
+
+function hasObviousChineseArtifactsInJapanese(text: string) {
+  const simplifiedMatches = text.match(simplifiedChinesePattern) ?? [];
+  return chinesePunctuationPattern.test(text) || simplifiedMatches.length >= 2;
+}
+
+function applyLiteralMeaningNotes(
+  result: GeneratedConversationResult,
+  request: GenerateConversationRequest,
+): GeneratedConversationResult {
+  if (
+    request.targetLanguage !== 'ja' ||
+    !japaneseLiteralWarningPatterns.some((pattern) => pattern.test(result.literalMeaning ?? ''))
+  ) {
+    return result;
+  }
+
+  return {
+    ...result,
+    naturalnessNote: appendNaturalnessNote(
+      result.naturalnessNote,
+      '原文に近い意味の日本語表現は要レビューです。日常的な語彙と自然な語順を確認してください。',
+    ),
+  };
+}
+
 function applyIntentNotes(
   result: GeneratedConversationResult,
   request: GenerateConversationRequest,
@@ -343,12 +413,36 @@ function validateGeneratedResult(
     return 'literalMeaning is empty';
   }
 
+  if (result.literalMeaning.length > 500) {
+    return 'literalMeaning is too long';
+  }
+
+  if (result.resultText.trim() === result.literalMeaning.trim()) {
+    return 'literalMeaning duplicates resultText';
+  }
+
   if (result.targetLanguage !== request.targetLanguage) {
     return 'targetLanguage mismatch';
   }
 
   if (result.needsNativeCheck !== true || result.reviewStatus !== 'needs-native-check') {
     return 'review status mismatch';
+  }
+
+  if (request.targetLanguage === 'ja') {
+    if (!hasNaturalJapaneseShape(result.resultText) || !hasNaturalJapaneseShape(result.literalMeaning)) {
+      return 'Japanese target text is invalid';
+    }
+    if (hasObviousChineseArtifactsInJapanese(result.literalMeaning)) {
+      return 'literalMeaning contains source-language artifacts';
+    }
+  }
+
+  if (
+    request.targetLanguage === 'zh-TW' &&
+    (!hasTraditionalChineseText(result.resultText) || !hasTraditionalChineseText(result.literalMeaning))
+  ) {
+    return 'Taiwan Mandarin target text is invalid';
   }
 
   if ((request.targetLanguage === 'zh-TW' || request.sourceLanguage === 'zh-TW') && !result.pinyin?.trim()) {
@@ -367,97 +461,123 @@ function classifyOpenAiError(error: unknown): GenerateConversationErrorCode {
   return status === 429 ? 'rate-limited' : 'openai-error';
 }
 
-export default async function handler(req: ApiRequest, res: ApiResponse) {
-  if (req.method !== 'POST') {
-    res.setHeader?.('Allow', 'POST');
-    res.status(405).json(errorResponse('invalid-request', 'POST /api/conversation/generate を使ってください。'));
-    return;
-  }
-
-  if (process.env.AI_GENERATION_ENABLED !== 'true') {
-    res.status(503).json(errorResponse('disabled', 'AI生成は現在無効です。'));
-    return;
-  }
-
-  if (!process.env.OPENAI_API_KEY) {
-    res.status(503).json(errorResponse('missing-api-key', 'OpenAI API key が設定されていません。'));
-    return;
-  }
-
-  const request = validateRequest(parseBody(req.body));
-  if (!request) {
-    res.status(400).json(errorResponse('invalid-request', '生成リクエストの形式が正しくありません。'));
-    return;
-  }
-
-  const model = process.env.OPENAI_MODEL || DEFAULT_MODEL;
+async function generateOpenAiConversation({
+  model,
+  prompt,
+}: ConversationGeneratorInput): Promise<ModelConversationResult> {
   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-  try {
-    const response = await client.responses.create({
-      model,
-      input: [
-        {
-          role: 'system',
-          content: 'You generate concise JSON for Taiwan Talk. Follow the provided schema exactly.',
-        },
-        {
-          role: 'user',
-          content: buildPrompt(request),
-        },
-      ],
-      max_output_tokens: 1100,
-      text: {
-        format: {
-          type: 'json_schema',
-          name: 'taiwan_talk_conversation_result',
-          schema: generationSchema,
-          strict: true,
-        },
+  const response = await client.responses.create({
+    model,
+    input: [
+      {
+        role: 'system',
+        content: 'You generate concise JSON for Taiwan Talk. Follow the provided schema exactly.',
       },
-    });
-
-    if (
-      (response as { status?: unknown }).status === 'incomplete' &&
-      (response as { incomplete_details?: { reason?: unknown } }).incomplete_details?.reason ===
-        'max_output_tokens'
-    ) {
-      res.status(502).json(errorResponse('openai-error', 'AI生成結果が途中で切れました。'));
-      return;
-    }
-
-    const outputText = extractOutputText(response);
-    if (!outputText) {
-      res.status(502).json(errorResponse('parse-error', 'AI生成結果を読み取れませんでした。'));
-      return;
-    }
-
-    const parsed = JSON.parse(outputText) as ModelConversationResult;
-    const result = applyIntentNotes(normalizeResult(parsed, request), request);
-    const invalidReason = validateGeneratedResult(result, request);
-
-    if (invalidReason) {
-      res.status(502).json(errorResponse('parse-error', `AI生成結果の検証に失敗しました: ${invalidReason}`));
-      return;
-    }
-
-    res.status(200).json({
-      ok: true,
-      result,
-      meta: {
-        provider: 'openai',
-        model,
-        generatedAt: new Date().toISOString(),
+      {
+        role: 'user',
+        content: prompt,
       },
-    });
-  } catch (error) {
-    if (error instanceof SyntaxError) {
-      res.status(502).json(errorResponse('parse-error', 'AI生成結果のJSON解析に失敗しました。'));
-      return;
-    }
+    ],
+    max_output_tokens: 1100,
+    text: {
+      format: {
+        type: 'json_schema',
+        name: 'taiwan_talk_conversation_result',
+        schema: generationSchema,
+        strict: true,
+      },
+    },
+  });
 
-    res.status(classifyOpenAiError(error) === 'rate-limited' ? 429 : 502).json(
-      errorResponse(classifyOpenAiError(error), 'AI生成に失敗しました。'),
-    );
+  if (
+    (response as { status?: unknown }).status === 'incomplete' &&
+    (response as { incomplete_details?: { reason?: unknown } }).incomplete_details?.reason ===
+      'max_output_tokens'
+  ) {
+    throw new Error('AI generation output was incomplete');
   }
+
+  const outputText = extractOutputText(response);
+  if (!outputText) {
+    throw new SyntaxError('AI generation output was empty');
+  }
+
+  return JSON.parse(outputText) as ModelConversationResult;
 }
+
+export function createConversationHandler(
+  generateConversation: ConversationGenerator = generateOpenAiConversation,
+) {
+  return async function handler(req: ApiRequest, res: ApiResponse) {
+    if (req.method !== 'POST') {
+      res.setHeader?.('Allow', 'POST');
+      res.status(405).json(errorResponse('invalid-request', 'POST /api/conversation/generate を使ってください。'));
+      return;
+    }
+
+    const contentType = req.headers?.['content-type'];
+    const normalizedContentType = Array.isArray(contentType) ? contentType[0] : contentType;
+    if (!normalizedContentType?.toLowerCase().startsWith('application/json')) {
+      res.status(415).json(errorResponse('invalid-request', 'JSON形式のリクエストを送信してください。'));
+      return;
+    }
+
+    if (process.env.AI_GENERATION_ENABLED !== 'true') {
+      res.status(503).json(errorResponse('disabled', 'AI生成は現在無効です。'));
+      return;
+    }
+
+    if (!process.env.OPENAI_API_KEY) {
+      res.status(503).json(errorResponse('missing-api-key', 'OpenAI API key が設定されていません。'));
+      return;
+    }
+
+    const request = validateRequest(parseBody(req.body));
+    if (!request) {
+      res.status(400).json(errorResponse('invalid-request', '生成リクエストの形式が正しくありません。'));
+      return;
+    }
+
+    const model = process.env.OPENAI_MODEL || DEFAULT_MODEL;
+
+    try {
+      const parsed = await generateConversation({
+        model,
+        prompt: buildPrompt(request),
+        request,
+      });
+      const result = applyLiteralMeaningNotes(
+        applyIntentNotes(normalizeResult(parsed, request), request),
+        request,
+      );
+      const invalidReason = validateGeneratedResult(result, request);
+
+      if (invalidReason) {
+        res.status(502).json(errorResponse('parse-error', `AI生成結果の検証に失敗しました: ${invalidReason}`));
+        return;
+      }
+
+      res.status(200).json({
+        ok: true,
+        result,
+        meta: {
+          provider: 'openai',
+          model,
+          generatedAt: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        res.status(502).json(errorResponse('parse-error', 'AI生成結果のJSON解析に失敗しました。'));
+        return;
+      }
+
+      const code = classifyOpenAiError(error);
+      res.status(code === 'rate-limited' ? 429 : 502).json(
+        errorResponse(code, 'AI生成に失敗しました。'),
+      );
+    }
+  };
+}
+
+export default createConversationHandler();

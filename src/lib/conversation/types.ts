@@ -25,7 +25,7 @@ export type Phrase = {
   id: string;
   sourceText: string;
   resultText: string;
-  /** 原文の意味を確認するための、直訳寄りの短い補助説明。 */
+  /** 原文の意味を対象言語で確認するための、短く自然な補助説明。 */
   literalMeaning?: string;
   sourceLanguage: LanguageCode;
   targetLanguage: LanguageCode;
@@ -65,7 +65,7 @@ export type PracticeResult = {
 export type ConversationResult = {
   sourceText: string;
   resultText: string;
-  /** 原文の意味を確認するための、直訳寄りの短い補助説明。 */
+  /** 原文の意味を対象言語で確認するための、短く自然な補助説明。 */
   literalMeaning?: string;
   pinyin?: string;
   sourceLanguage: LanguageCode;

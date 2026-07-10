@@ -17,15 +17,22 @@ class SpeechService {
   private activeAudio: HTMLAudioElement | null = null;
   private activeObjectUrl: string | null = null;
   private activeOnEnd: (() => void) | null = null;
+  private activeStartResolver: ((result: SpeechPlaybackResult) => void) | null = null;
   private playbackSequence = 0;
 
   private releaseAiAudio() {
-    if (this.activeAudio) {
-      this.activeAudio.onended = null;
-      this.activeAudio.onerror = null;
-      this.activeAudio.pause();
-      this.activeAudio.currentTime = 0;
-      this.activeAudio = null;
+    const audio = this.activeAudio;
+    this.activeAudio = null;
+    if (audio) {
+      audio.oncanplay = null;
+      audio.onplaying = null;
+      audio.onended = null;
+      audio.onpause = null;
+      audio.onerror = null;
+      audio.onabort = null;
+      audio.onstalled = null;
+      audio.pause();
+      audio.currentTime = 0;
     }
 
     if (this.activeObjectUrl) {
@@ -40,12 +47,15 @@ class SpeechService {
 
   stop() {
     const onEnd = this.activeOnEnd;
+    const resolveStart = this.activeStartResolver;
     this.activeOnEnd = null;
+    this.activeStartResolver = null;
     this.playbackSequence += 1;
     this.activeAbortController?.abort();
     this.activeAbortController = null;
     this.releaseAiAudio();
     browserSpeechFallback.stop();
+    resolveStart?.({ ok: false, message: '音声再生を停止しました。', cancelled: true });
     onEnd?.();
   }
 
@@ -54,18 +64,33 @@ class SpeechService {
     language: TtsLanguage,
     speedMode: TtsSpeedMode,
     options: SpeechPlaybackOptions,
+    sequence: number,
   ) {
     const callbacks = options.callbacks;
     return browserSpeechFallback.speak(text, language, speedMode, {
       ...callbacks,
+      onProviderChange: (provider) => {
+        if (sequence === this.playbackSequence) callbacks?.onProviderChange?.(provider);
+      },
+      onStart: (provider) => {
+        if (sequence !== this.playbackSequence) return;
+        callbacks?.onStart?.(provider);
+      },
       onEnd: () => {
-        if (this.activeOnEnd !== callbacks?.onEnd) return;
+        if (sequence !== this.playbackSequence) return;
         this.activeOnEnd = null;
         callbacks?.onEnd?.();
       },
       onError: (message) => {
+        if (sequence !== this.playbackSequence) return;
         this.activeOnEnd = null;
         callbacks?.onError?.(message);
+      },
+      onPause: () => {
+        if (sequence === this.playbackSequence) callbacks?.onPause?.();
+      },
+      onResume: (provider) => {
+        if (sequence === this.playbackSequence) callbacks?.onResume?.(provider);
       },
     });
   }
@@ -99,35 +124,89 @@ class SpeechService {
       this.activeAudio = audio;
       this.activeAbortController = null;
 
-      audio.onended = () => {
+      let startPromiseSettled = false;
+      let fallbackStarted = false;
+
+      const finishAiPlayback = () => {
         if (this.activeAudio !== audio) return;
+        const resolveStart = this.activeStartResolver;
+        this.activeStartResolver = null;
         this.activeOnEnd = null;
         this.releaseAiAudio();
+        resolveStart?.({ ok: false, message: '音声再生が終了しました。', cancelled: true });
         options.callbacks?.onEnd?.();
       };
-      audio.onerror = () => {
-        if (this.activeAudio !== audio) return;
+
+      const startFallback = () => {
+        if (
+          fallbackStarted ||
+          this.activeAudio !== audio ||
+          abortController.signal.aborted ||
+          sequence !== this.playbackSequence
+        ) {
+          return { ok: false, message: '音声再生を停止しました。', cancelled: true } as const;
+        }
+
+        fallbackStarted = true;
         this.releaseAiAudio();
-        const fallback = this.playBrowserFallback(trimmedText, language, speedMode, options);
-        if (!fallback.ok) options.callbacks?.onError?.(fallback.message);
+        const fallback = this.playBrowserFallback(
+          trimmedText,
+          language,
+          speedMode,
+          options,
+          sequence,
+        );
+        if (!fallback.ok) {
+          this.activeOnEnd = null;
+          options.callbacks?.onError?.(fallback.message);
+        }
+        return fallback;
       };
 
-      await audio.play();
-      if (sequence !== this.playbackSequence) {
-        this.releaseAiAudio();
-        return { ok: false, message: '音声再生を停止しました。', cancelled: true };
-      }
+      const playbackResult = new Promise<SpeechPlaybackResult>((resolve) => {
+        const resolvePlaybackStart = (result: SpeechPlaybackResult) => {
+          if (startPromiseSettled) return;
+          startPromiseSettled = true;
+          if (this.activeStartResolver === resolvePlaybackStart) {
+            this.activeStartResolver = null;
+          }
+          resolve(result);
+        };
+        this.activeStartResolver = resolvePlaybackStart;
 
-      options.callbacks?.onProviderChange?.('openai-tts');
-      options.callbacks?.onStart?.('openai-tts');
-      return { ok: true, provider: 'openai-tts' };
+        const failAiPlayback = () => {
+          if (fallbackStarted) return;
+          const fallback = startFallback();
+          resolvePlaybackStart(fallback);
+        };
+
+        audio.oncanplay = () => {
+          if (sequence !== this.playbackSequence) finishAiPlayback();
+        };
+        audio.onplaying = () => {
+          if (startPromiseSettled || sequence !== this.playbackSequence) return;
+          options.callbacks?.onProviderChange?.('openai-tts');
+          options.callbacks?.onStart?.('openai-tts');
+          resolvePlaybackStart({ ok: true, provider: 'openai-tts' });
+        };
+        audio.onended = finishAiPlayback;
+        audio.onpause = finishAiPlayback;
+        audio.onerror = failAiPlayback;
+        audio.onabort = failAiPlayback;
+        audio.onstalled = failAiPlayback;
+
+        void audio.play().catch(failAiPlayback);
+      });
+
+      return await playbackResult;
     } catch (error) {
       this.activeAbortController = null;
       if (abortController.signal.aborted || sequence !== this.playbackSequence) {
         return { ok: false, message: '音声再生を停止しました。', cancelled: true };
       }
 
-      const fallback = this.playBrowserFallback(trimmedText, language, speedMode, options);
+      this.releaseAiAudio();
+      const fallback = this.playBrowserFallback(trimmedText, language, speedMode, options, sequence);
       if (fallback.ok) return fallback;
 
       const message =

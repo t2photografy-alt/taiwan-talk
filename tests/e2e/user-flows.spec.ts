@@ -75,6 +75,8 @@ async function installMockSpeech(page: Page) {
       onstart: ((event: SpeechSynthesisEvent) => void) | null = null;
       onend: ((event: SpeechSynthesisEvent) => void) | null = null;
       onerror: ((event: SpeechSynthesisErrorEvent) => void) | null = null;
+      onpause: ((event: SpeechSynthesisEvent) => void) | null = null;
+      onresume: ((event: SpeechSynthesisEvent) => void) | null = null;
 
       constructor(text: string) {
         super();
@@ -112,6 +114,10 @@ async function installMockSpeech(page: Page) {
             rate: utterance.rate,
             voiceLang: utterance.voice?.lang ?? null,
           });
+          if ((window as unknown as { __speechShouldFail?: boolean }).__speechShouldFail) {
+            utterance.onerror?.(new Event('error') as SpeechSynthesisErrorEvent);
+            return;
+          }
           window.setTimeout(() => utterance.onstart?.(new Event('start') as SpeechSynthesisEvent), 0);
         },
       },
@@ -125,8 +131,13 @@ async function installMockAudio(page: Page) {
 
     class MockAudio {
       currentTime = 0;
+      onabort: (() => void) | null = null;
+      oncanplay: (() => void) | null = null;
       onended: (() => void) | null = null;
       onerror: (() => void) | null = null;
+      onpause: (() => void) | null = null;
+      onplaying: (() => void) | null = null;
+      onstalled: (() => void) | null = null;
       paused = true;
       src: string;
 
@@ -140,6 +151,8 @@ async function installMockAudio(page: Page) {
           action: 'play',
           src: this.src,
         });
+        this.oncanplay?.();
+        this.onplaying?.();
       }
 
       pause() {
@@ -148,6 +161,7 @@ async function installMockAudio(page: Page) {
           action: 'pause',
           src: this.src,
         });
+        this.onpause?.();
       }
     }
 
@@ -618,6 +632,22 @@ test('作る画面: 台湾華語から日本語へ生成して保存・表示・
   await expectPageChromeHealthy(page);
 });
 
+test('原文に近い意味: 自然な対象言語でresultTextと役割を分ける', async ({ page }) => {
+  await page.goto('/compose');
+  await page.getByRole('button', { name: '台湾華語から' }).click();
+  await page.getByTestId('compose-input').fill('明年也要來喔！');
+  await page.getByTestId('compose-generate-button').click();
+
+  await expect(page.getByTestId('compose-result-text')).toBeVisible({ timeout: generationWaitMs });
+  const resultText = normalizeText(await page.getByTestId('compose-result-text').innerText());
+  const literalMeaning = normalizeText(await page.getByTestId('compose-literal-meaning').innerText());
+  expect(literalMeaning).not.toBe('');
+  expect(literalMeaning).not.toBe(resultText);
+  expect(literalMeaning).toContain('来年');
+  expect(literalMeaning).not.toContain('明年も');
+  expect(literalMeaning).not.toBe('明年も来てくださいね！');
+});
+
 test('Flow D: 練習で発音チェックモックから苦手に保存できる', async ({ page }) => {
   await installMockRecorder(page);
   await page.goto('/practice');
@@ -704,6 +734,33 @@ test('Flow F: 左上メニューから設定へ進み禁止文言が出ていな
   await expectNoForbiddenText(page);
   await expectLogoHealthy(page);
   await expectPageChromeHealthy(page);
+});
+
+test('音声エラー: TTSと端末音声が失敗しても停止表示を残さず再操作できる', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => {
+    (window as unknown as { __speechShouldFail: boolean }).__speechShouldFail = true;
+  });
+
+  const listenButton = page.getByTestId('phrase-main-listen').first();
+  const slowButton = page.getByTestId('phrase-main-slow').first();
+  await listenButton.click();
+  await expect(page.getByText('端末の音声でも再生できませんでした。').first()).toBeVisible();
+  await expect(listenButton).toContainText('聞く');
+  await expect(listenButton).not.toContainText('停止');
+
+  await listenButton.click();
+  await expect(listenButton).toContainText('聞く');
+  await slowButton.click();
+  await expect(slowButton).toContainText('ゆっくり');
+  await expect(slowButton).not.toContainText('停止');
+
+  await page.evaluate(() => {
+    (window as unknown as { __speechShouldFail: boolean }).__speechShouldFail = false;
+  });
+  await page.goto('/practice');
+  await page.getByTestId('practice-main-listen').click();
+  await expect(page.getByTestId('practice-main-listen')).toContainText('停止');
 });
 
 test('AI音声: 実voice styleを送り、聞く・ゆっくり・再タップ停止が動く', async ({ page }) => {

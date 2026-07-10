@@ -304,9 +304,11 @@ export function PracticePage({
           >
             {speechPlayback.isLoading(selectedPhrase.id, 'normal')
               ? t('cta.loading')
-              : speechPlayback.isPlaying(selectedPhrase.id, 'normal')
-                ? t('cta.stop')
-                : t('cta.listen')}
+              : speechPlayback.isStopping(selectedPhrase.id, 'normal')
+                ? t('cta.stopping')
+                : speechPlayback.isPlaying(selectedPhrase.id, 'normal')
+                  ? t('cta.stop')
+                  : t('cta.listen')}
           </PrimaryButton>
           <PrimaryButton
             data-speech-language="zh-TW"
@@ -325,9 +327,11 @@ export function PracticePage({
           >
             {speechPlayback.isLoading(selectedPhrase.id, 'slow')
               ? t('cta.loading')
-              : speechPlayback.isPlaying(selectedPhrase.id, 'slow')
-                ? t('cta.stop')
-                : t('cta.slowListen')}
+              : speechPlayback.isStopping(selectedPhrase.id, 'slow')
+                ? t('cta.stopping')
+                : speechPlayback.isPlaying(selectedPhrase.id, 'slow')
+                  ? t('cta.stop')
+                  : t('cta.slowListen')}
           </PrimaryButton>
         </div>
         {speechPlayback.error ? (

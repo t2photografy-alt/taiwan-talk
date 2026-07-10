@@ -8,6 +8,7 @@
 - `npm run qa:screenshots`
 - `npm run qa:ai-generation`
 - `npm run qa:tts`
+- `npm run qa:api-contract`
 
 公開URLを対象にする場合:
 
@@ -34,6 +35,7 @@ npm run qa:tts
 - `npm run qa:screenshots`：主要画面の目視確認用スクリーンショットを `outputs/visual-qa/` に生成。
 - `npm run qa:ai-generation`：AI生成サンプルを取得し、品質確認用レポートを `outputs/ai-generation-qa/latest.md` に生成。
 - `npm run qa:tts`：音声APIのバイナリ応答、実voice ID切替、通常/ゆっくり、入力検証を確認。Productionでは実APIへ接続する。
+- `npm run qa:api-contract`：OpenAIを呼ばずにconversation / speech handlerへmock generatorを注入し、入力拒否、応答構造、review flags、音声body、voice / instructions mapping、secret非露出を確認する。
 - `docs/ai-generation-review.md`：`qa:ai-generation` の結果を人間が一次レビューするための記録。
 
 ## Codex報告に含めること
@@ -43,6 +45,7 @@ npm run qa:tts
 - `npm run qa:screenshots` の成功/失敗。
 - `npm run qa:ai-generation` の成功/失敗と、注意ケースの数。
 - `npm run qa:tts` の成功/失敗。Productionでは音声バイナリ件数と入力拒否結果も含める。
+- `npm run qa:api-contract` の成功/失敗と契約チェック件数。
 - 失敗したFlow名と、壊れていた導線。
 - 390px幅での横はみ出し、下部ナビ、大きく表示画面、ボタン文字崩れの結果。
 - ロゴ表示と禁止文言検査の結果。
@@ -70,6 +73,7 @@ npm run qa:tts
 - 音声設定：自然・やわらかめ / 自然・落ち着いた声を選択でき、保存キー `taiwan-talk-tts-voice-style` が更新されることを確認する。
 - AI音声：聞く / ゆっくりがOpenAI TTSリクエストを送り、同じボタンの再タップで停止できることを確認する。
 - 音声フォールバック：TTS API失敗時だけWeb Speech APIへ切り替わり、端末音声の注記が表示されることを確認する。
+- 音声エラー復帰：TTSとWeb Speechがともに失敗しても `停止` を残さず、`聞く` / `ゆっくり` を再操作でき、別画面の音声も開始できることを確認する。
 - 音声プレビュー：2つのvoice styleそれぞれに日本語 / 台湾華語の試聴導線があることを確認する。
 - AI生成土台：API keyがなくてもモックフォールバックで作る/メッセージ導線が通ることを確認する。
 - AI生成注記：生成結果が確認前の表現である注記を確認する。
@@ -84,11 +88,13 @@ npm run qa:tts
 - 台湾華語→日本語では `sourceLanguage: zh-TW` / `targetLanguage: ja` を確認する。
 - 台湾華語→日本語では、`resultText` が日本語として表示され、メイン音声は `ja-JP`、練習対象は台湾華語 sourceText であることを確認する。
 - 台湾華語→日本語では、自然な会話向け `resultText` を主表示し、`literalMeaning` を「原文に近い意味」の補助表示として分ける。
+- `literalMeaning` はtargetLanguageの短く自然な補助文とし、`resultText` と完全一致させない。日本語では中国語語順を残さず、日常UIで `明年` より `来年` を優先する。
 - 写真依頼の入力では、生成本文に `拍` / `照` / `照片` / `相片` のいずれかが含まれることをゆるく確認する。
 - 保存後は、テスト中に取得した生成本文を使って、保存画面、大きく表示、練習画面まで同じ内容を追跡する。
 - メッセージ返信では、返信候補が空でないこと、繁体字らしいこと、返信方針に近い語が含まれること、保存と大きく表示ができることを確認する。
 - APIが無効・未設定・意図外の結果を返す場合でも、モックフォールバックで同じ導線が通ることを前提にする。
 - Productionでは `/api/conversation/generate` が200を返した場合、`needsNativeCheck: true` と `reviewStatus: needs-native-check` も確認する。
+- Production通信が `ERR_NETWORK_ACCESS_DENIED` / `EACCES` で使えない実行環境では、通信失敗をProduction障害と断定せず、`qa:api-contract` のローカル結果とユーザー環境で再実行するProductionコマンドを報告する。
 
 ## AI生成品質QA
 

@@ -276,6 +276,7 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
                       const previewId = `settings-preview:${item.value}:${language}`;
                       const loading = speechPlayback.isLoading(previewId, 'normal');
                       const playing = speechPlayback.isPlaying(previewId, 'normal');
+                      const stopping = speechPlayback.isStopping(previewId, 'normal');
 
                       return (
                         <PrimaryButton
@@ -287,9 +288,11 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
                         >
                           {loading
                             ? t('cta.loading')
-                            : playing
-                              ? t('cta.stop')
-                              : t(language === 'ja-JP' ? 'settings.previewJa' : 'settings.previewZh')}
+                            : stopping
+                              ? t('cta.stopping')
+                              : playing
+                                ? t('cta.stop')
+                                : t(language === 'ja-JP' ? 'settings.previewJa' : 'settings.previewZh')}
                         </PrimaryButton>
                       );
                     })}

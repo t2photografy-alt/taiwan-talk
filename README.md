@@ -88,6 +88,15 @@ It is not an event-only app. Event conversations are one representative use case
 - `npm run qa:tts` validates audio responses, voice mapping, speed modes, and invalid requests
 - AI voice quality and Taiwan Mandarin/Japanese naturalness still require device and human review
 
+## Phase 3E-1 Status
+
+- Speech buttons enter `playing` only after an actual HTML audio `playing` event or Web Speech `onstart`
+- OpenAI TTS and browser fallback failures release active resources and return the controls to an operable idle state
+- `literalMeaning` is a short, natural explanation in the target language; it stays closer to the source and must not duplicate `resultText`
+- Everyday Japanese support text prefers ordinary wording such as `来年` and avoids source-language word order
+- `npm run qa:api-contract` checks conversation and speech handler contracts locally without calling OpenAI
+- Voice naturalness and the audible difference between the two voice styles remain Android device and human review items
+
 ## Display Language And Conversation Direction
 
 - Display language changes app UI labels between Japanese and Taiwan Mandarin.
@@ -137,6 +146,7 @@ npm run qa:flow
 npm run qa:screenshots
 npm run qa:ai-generation
 npm run qa:tts
+npm run qa:api-contract
 ```
 
 `qa:flow` does not require generated phrases to match one fixed sentence. It checks the generated result card, Taiwan Mandarin-like text, save/display/practice routes, and the native-check notice so the same flow works with mock fallback and AI-enabled Production.
@@ -144,6 +154,8 @@ npm run qa:tts
 `qa:ai-generation` is for generation quality sampling. It posts the documented cases to `/api/conversation/generate`, checks structure and review flags, then writes a Markdown report under `outputs/ai-generation-qa/`. It is not a native-language approval step.
 
 `qa:tts` validates `/api/speech/generate`. Without `BASE_URL`, it runs the Vercel handler with an injected audio generator; with `BASE_URL`, it verifies real audio responses from the deployed API.
+
+`qa:api-contract` injects local conversation and speech generators into the Vercel handlers. It verifies request rejection, review flags, target-language `literalMeaning`, audio responses, voice mapping, instruction differences, and secret non-exposure without using the network or a real OpenAI key.
 
 Human-readable first-pass review notes are kept in `docs/ai-generation-review.md`. Passing `qa:ai-generation` does not mean AI generation quality is finished.
 

@@ -252,9 +252,11 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
             >
               {speechPlayback.isLoading('compose-result', 'normal')
                 ? t('cta.loading')
-                : resultWithCategory && speechPlayback.isPlaying('compose-result', 'normal')
-                  ? t('cta.stop')
-                  : t('cta.listen')}
+                : speechPlayback.isStopping('compose-result', 'normal')
+                  ? t('cta.stopping')
+                  : resultWithCategory && speechPlayback.isPlaying('compose-result', 'normal')
+                    ? t('cta.stop')
+                    : t('cta.listen')}
             </PrimaryButton>
             <PrimaryButton
               data-speech-language={mainSpeechTarget?.language}
@@ -276,9 +278,11 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
             >
               {speechPlayback.isLoading('compose-result', 'slow')
                 ? t('cta.loading')
-                : resultWithCategory && speechPlayback.isPlaying('compose-result', 'slow')
-                  ? t('cta.stop')
-                  : t('cta.slow')}
+                : speechPlayback.isStopping('compose-result', 'slow')
+                  ? t('cta.stopping')
+                  : resultWithCategory && speechPlayback.isPlaying('compose-result', 'slow')
+                    ? t('cta.stop')
+                    : t('cta.slow')}
             </PrimaryButton>
             {originalSpeechTarget ? (
               <PrimaryButton
@@ -299,9 +303,11 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
               >
                 {speechPlayback.isLoading('compose-original', 'normal')
                   ? t('cta.loading')
-                  : speechPlayback.isPlaying('compose-original', 'normal')
-                    ? t('cta.stop')
-                    : t('cta.listenOriginal')}
+                  : speechPlayback.isStopping('compose-original', 'normal')
+                    ? t('cta.stopping')
+                    : speechPlayback.isPlaying('compose-original', 'normal')
+                      ? t('cta.stop')
+                      : t('cta.listenOriginal')}
               </PrimaryButton>
             ) : null}
             <PrimaryButton
