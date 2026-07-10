@@ -8,6 +8,7 @@ import type {
   GeneratedConversationResult,
 } from '../../src/lib/conversation/apiTypes.js';
 import type { LanguageCode, PhraseCategory, Tone } from '../../src/lib/conversation/types.js';
+import { normalizeNuance } from '../../src/lib/conversation/normalizeConversation.js';
 
 type ApiRequest = {
   method?: string;
@@ -28,7 +29,7 @@ type ModelConversationResult = Omit<
 > & {
   pinyin: string;
   literalMeaning: string;
-  nuance: string | null;
+  nuance: string;
   alternatives: Array<{
     label: string;
     resultText: string;
@@ -104,7 +105,7 @@ const generationSchema = {
     targetLanguage: { type: 'string', enum: languages },
     tone: { type: 'string', enum: tones },
     category: { type: 'string', enum: categories },
-    nuance: { type: ['string', 'null'] },
+    nuance: { type: 'string' },
     alternatives: {
       type: 'array',
       maxItems: 2,
@@ -262,6 +263,8 @@ function buildPrompt(request: GenerateConversationRequest) {
     'literalMeaning は対象言語で、一文または短い句として書いてください。resultTextより会話的に盛らず、原文にない感情を追加しないでください。',
     'targetLanguage が ja の literalMeaning は、現代の自然な日本語にしてください。日常的な表示では「明年」より「来年」を優先し、中国語由来の語順、不要な代名詞、教科書調・機械翻訳調を避けてください。',
     'targetLanguage が zh-TW の literalMeaning は、自然な繁体字の台湾華語にし、日本語を残さないでください。',
+    'nuance must be a short explanation of the tone, relationship distance, and practical usage of resultText.',
+    'nuance はtargetLanguageで簡潔に書き、resultTextやliteralMeaningを繰り返さないでください。friendly / polite / casualなどの距離感と、メッセージ・対面のどちらで使いやすいかを説明し、イベント会場だけに用途を限定しないでください。',
     '会話向けローカライズ例: 下次也一起玩吧～ → 次もまた一緒に遊ぼうね〜 / 謝謝你幫我拍照！ → 写真撮ってくれてありがとう！ / 明年也要來喔！ → 来年も来てね！',
     '会話向けローカライズ例: 等一下我把照片傳給你～ → あとで写真送るね〜 / 今天真的很開心！ → friendlyなら「今日ほんと楽しかった！」、politeなら「今日は本当に楽しかったです！」。',
     'pinyin フィールドは必ず空でない文字列にしてください。sourceLanguage または targetLanguage に zh-TW が含まれるため、台湾華語本文の読みを必ず入れてください。',
@@ -303,16 +306,23 @@ function extractOutputText(response: unknown) {
 }
 
 function normalizeResult(result: ModelConversationResult, request: GenerateConversationRequest): GeneratedConversationResult {
+  const resultText = result.resultText.trim();
+  const literalMeaning = result.literalMeaning.trim();
+  const tone = isTone(result.tone) ? result.tone : request.tone;
+
   return {
     sourceText: result.sourceText || request.sourceText,
-    resultText: result.resultText.trim(),
-    literalMeaning: result.literalMeaning.trim(),
+    resultText,
+    literalMeaning,
     pinyin: result.pinyin?.trim() || undefined,
     sourceLanguage: isLanguage(result.sourceLanguage) ? result.sourceLanguage : request.sourceLanguage,
     targetLanguage: isLanguage(result.targetLanguage) ? result.targetLanguage : request.targetLanguage,
-    tone: isTone(result.tone) ? result.tone : request.tone,
+    tone,
     category: isCategory(result.category) ? result.category : request.category ?? 'other',
-    nuance: result.nuance?.trim() || undefined,
+    nuance: normalizeNuance(result.nuance, tone, request.targetLanguage, [
+      resultText,
+      literalMeaning,
+    ]),
     alternatives: result.alternatives.slice(0, 2).map((item) => ({
       label: item.label.trim(),
       resultText: item.resultText.trim(),
@@ -419,6 +429,17 @@ function validateGeneratedResult(
 
   if (result.resultText.trim() === result.literalMeaning.trim()) {
     return 'literalMeaning duplicates resultText';
+  }
+
+  if (!result.nuance.trim()) {
+    return 'nuance is empty';
+  }
+
+  if (
+    result.nuance.trim() === result.resultText.trim() ||
+    result.nuance.trim() === result.literalMeaning.trim()
+  ) {
+    return 'nuance duplicates generated text';
   }
 
   if (result.targetLanguage !== request.targetLanguage) {

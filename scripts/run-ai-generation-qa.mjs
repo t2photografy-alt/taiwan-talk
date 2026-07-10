@@ -418,6 +418,10 @@ function createMockResponse(testCase, reason) {
     testCase.request.targetLanguage === 'ja'
       ? mockJapaneseLiteralMeanings[testCase.id] ?? '原文の意味を自然な日本語で確認します。'
       : `原意是「${resultText.replace(/[！。]$/, '')}」。`;
+  const nuance =
+    testCase.request.targetLanguage === 'ja'
+      ? '友達へのメッセージや対面で使いやすい、自然な言い方です。'
+      : '適合自然地傳給朋友，也適合面對面表達。';
 
   return {
     ok: true,
@@ -430,7 +434,7 @@ function createMockResponse(testCase, reason) {
       targetLanguage: testCase.request.targetLanguage,
       tone: testCase.request.tone,
       category: testCase.request.category ?? 'other',
-      nuance: `Mock fallback used for QA sampling: ${reason}`,
+      nuance,
       alternatives: [],
       readabilityScore: 80,
       needsNativeCheck: true,
@@ -465,6 +469,7 @@ function evaluateResult(testCase, payload, httpStatus) {
   const resultText = String(result.resultText ?? '');
   const pinyin = String(result.pinyin ?? '');
   const literalMeaning = String(result.literalMeaning ?? '');
+  const nuance = String(result.nuance ?? '');
   const checks = [];
 
   const add = (label, ok, severity = 'fail') => {
@@ -475,12 +480,17 @@ function evaluateResult(testCase, payload, httpStatus) {
   add('ok true', payload.ok === true);
   add('resultText not empty', resultText.trim().length > 0);
   add('literalMeaning not empty', literalMeaning.trim().length > 0);
+  add('nuance not empty', nuance.trim().length > 0);
+  add('nuance differs from resultText', nuance.trim() !== resultText.trim());
+  add('nuance differs from literalMeaning', nuance.trim() !== literalMeaning.trim());
   if (testCase.request.targetLanguage === 'ja') {
     add('Japanese result likely', isJapaneseLikely(resultText));
     add('Japanese literalMeaning likely', isJapaneseLikely(literalMeaning));
+    add('Japanese nuance likely', isJapaneseLikely(nuance));
   } else {
     add('Traditional Chinese likely', isTraditionalChineseLikely(resultText), 'warn');
     add('Traditional Chinese literalMeaning likely', isTraditionalChineseLikely(literalMeaning), 'warn');
+    add('Traditional Chinese nuance likely', isTraditionalChineseLikely(nuance), 'warn');
   }
   add('pinyin exists', pinyin.trim().length > 0);
   add('pinyin has tone marks', hasToneMarkedPinyin(pinyin), 'warn');
@@ -679,6 +689,12 @@ function renderReport(results, generatedAt) {
     lines.push('');
     lines.push('```txt');
     lines.push(result.literalMeaning ?? '');
+    lines.push('```');
+    lines.push('');
+    lines.push('Nuance:');
+    lines.push('');
+    lines.push('```txt');
+    lines.push(result.nuance ?? '');
     lines.push('```');
     lines.push('');
     lines.push(`Provider: ${item.provider}`);

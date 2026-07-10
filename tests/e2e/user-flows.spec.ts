@@ -488,19 +488,21 @@ test('Flow A: 使う画面から大きく表示して戻れる', async ({ page }
 
   await expect(page.getByTestId('phrase-main-listen').first()).toHaveAttribute('data-speech-language', 'zh-TW');
   await expect(page.getByTestId('phrase-main-listen').first()).toHaveAttribute('data-speech-text', /好久不見/);
-  await page.getByRole('button', { name: '聞く' }).first().click();
+  const homeListenButton = page.getByTestId('phrase-main-listen').first();
+  const homeSlowButton = page.getByTestId('phrase-main-slow').first();
+  await homeListenButton.click();
   await expectLatestSpeechCall(page, { lang: 'zh-TW', text: /好久不見/ });
   await expect(page.getByTestId('speech-fallback-notice').first()).toContainText('端末の音声');
-  await expect(page.getByRole('button', { name: '停止' }).first()).toBeVisible();
-  await page.getByRole('button', { name: '停止' }).first().click();
+  await expect(homeListenButton).toContainText('停止');
+  await homeListenButton.click();
   await expect(page.getByRole('button', { name: '聞く' }).first()).toBeVisible();
 
-  await page.getByRole('button', { name: 'ゆっくり' }).first().click();
+  await homeSlowButton.click();
   await expectLatestSpeechCall(page, { lang: 'zh-TW', text: /好久不見/, rate: 0.75 });
-  await expect(page.getByRole('button', { name: '停止' }).first()).toBeVisible();
-  await page.getByRole('button', { name: '聞く' }).first().click();
-  await expect(page.getByRole('button', { name: '停止' }).first()).toBeVisible();
-  await page.getByRole('button', { name: '停止' }).first().click();
+  await expect(homeSlowButton).toContainText('停止');
+  await homeListenButton.click();
+  await expect(homeListenButton).toContainText('停止');
+  await homeListenButton.click();
   await expect(page.getByRole('button', { name: 'ゆっくり' }).first()).toBeVisible();
   await expectPageChromeHealthy(page);
 
@@ -524,10 +526,10 @@ test('Flow A: 使う画面から大きく表示して戻れる', async ({ page }
   await expect(page.getByTestId('phrase-original-listen').first()).toHaveAttribute('data-speech-text', /好久不見/);
   await page.getByTestId('phrase-main-listen').first().click();
   await expectLatestSpeechCall(page, { lang: 'ja-JP', text: /久しぶり/ });
-  await page.getByRole('button', { name: '停止' }).first().click();
+  await page.getByTestId('phrase-main-listen').first().click();
   await page.getByTestId('phrase-original-listen').first().click();
   await expectLatestSpeechCall(page, { lang: 'zh-TW', text: /好久不見/ });
-  await page.getByRole('button', { name: '停止' }).first().click();
+  await page.getByTestId('phrase-original-listen').first().click();
   await page.getByRole('button', { name: '大きく表示' }).first().click();
   await expect(page.getByTestId('display-result-text')).toContainText('久しぶり');
   await expect(page.getByTestId('display-source-text')).toContainText('好久不見');
@@ -593,7 +595,11 @@ test('作る画面: 台湾華語から日本語へ生成して保存・表示・
   expect(japaneseResult).not.toBe('');
   expect(japaneseResult).toMatch(/[ぁ-んァ-ン一-龯]/);
   await expect(page.getByTestId('compose-result-nuance')).toBeVisible();
+  const nuance = normalizeText(await page.getByTestId('compose-result-nuance').innerText());
   const literalMeaning = normalizeText(await page.getByTestId('compose-literal-meaning').innerText());
+  expect(nuance).not.toBe('');
+  expect(nuance).not.toBe(japaneseResult);
+  expect(nuance).not.toBe(literalMeaning);
   expect(literalMeaning).not.toBe('');
   expect(literalMeaning).not.toBe(japaneseResult);
   await expect(page.getByTestId('compose-result-pinyin')).not.toHaveText('', { timeout: generationWaitMs });
@@ -604,13 +610,13 @@ test('作る画面: 台湾華語から日本語へ生成して保存・表示・
   await expect(page.getByTestId('compose-original-listen')).toHaveAttribute('data-speech-text', taiwanText);
   await page.getByTestId('compose-main-listen').click();
   await expectLatestSpeechCall(page, { lang: 'ja-JP', text: japaneseResult });
-  await page.getByRole('button', { name: '停止' }).first().click();
+  await page.getByTestId('compose-main-listen').click();
   await page.getByTestId('compose-main-slow').click();
   await expectLatestSpeechCall(page, { lang: 'ja-JP', text: japaneseResult, rate: 0.75 });
-  await page.getByRole('button', { name: '停止' }).first().click();
+  await page.getByTestId('compose-main-slow').click();
   await page.getByTestId('compose-original-listen').click();
   await expectLatestSpeechCall(page, { lang: 'zh-TW', text: taiwanText });
-  await page.getByRole('button', { name: '停止' }).first().click();
+  await page.getByTestId('compose-original-listen').click();
 
   await page.getByTestId('compose-save-button').click();
   await expect(page.getByText('保存しました')).toBeVisible();
@@ -652,12 +658,36 @@ test('Flow D: 練習で発音チェックモックから苦手に保存できる
   await installMockRecorder(page);
   await page.goto('/practice');
   await expect(page.getByText('録音待機')).toBeVisible();
-  await page.getByRole('button', { name: '聞く', exact: true }).click();
-  await page.getByRole('button', { name: 'ゆっくり聞く' }).click();
+  const listenButton = page.getByTestId('practice-main-listen');
+  const slowButton = page.getByTestId('practice-main-slow');
+  await listenButton.click();
+  await slowButton.click();
+  await expect(slowButton).toContainText('停止');
+  const speechCallsBeforeRecording = await page.evaluate(
+    () => (window as unknown as { __speechCalls?: unknown[] }).__speechCalls?.length ?? 0,
+  );
+
   await page.getByRole('button', { name: '録音する' }).click();
   await expect(page.getByText('録音中')).toBeVisible();
-  await page.locator('button').filter({ hasText: '停止' }).click();
+  await expect(slowButton).toContainText('ゆっくり聞く');
+  await expect(listenButton).toBeDisabled();
+  await expect(slowButton).toBeDisabled();
+  await listenButton.evaluate((element) => (element as HTMLButtonElement).click());
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => (window as unknown as { __speechCalls?: unknown[] }).__speechCalls?.length ?? 0,
+      ),
+    )
+    .toBe(speechCallsBeforeRecording);
+
+  const recordingStop = page.getByTestId('practice-recording-stop');
+  await expect(recordingStop).toHaveCount(1);
+  await expect(recordingStop).toHaveAccessibleName('録音を停止');
+  await recordingStop.click();
   await expect(page.getByText('録音できました')).toBeVisible();
+  await expect(listenButton).toBeEnabled();
+  await expect(slowButton).toBeEnabled();
   await expect(page.getByRole('button', { name: '自分の音声を聞く' })).toBeVisible();
   await page.getByRole('button', { name: '発音チェックへ' }).click();
   await expect(page.getByText('あなたの発音チェック結果')).toBeVisible();
@@ -821,7 +851,7 @@ test('端末チェック: 音声テストと録音テストUIが操作できる'
 
   await page.getByRole('button', { name: '録音テスト' }).click();
   await expect(page.getByText('録音中')).toBeVisible();
-  await page.locator('button').filter({ hasText: '停止' }).last().click();
+  await page.getByTestId('settings-recording-stop').click();
   await expect(page.getByText('録音できました')).toBeVisible();
   await expect(page.getByRole('button', { name: '録音を聞く' })).toBeVisible();
 

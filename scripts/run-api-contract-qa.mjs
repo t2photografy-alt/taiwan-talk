@@ -14,6 +14,9 @@ const conversationModule = await import(
   pathToFileURL(`${process.cwd()}/api/conversation/generate.ts`).href
 );
 const speechModule = await import(pathToFileURL(`${process.cwd()}/api/speech/generate.ts`).href);
+const mockConversationModule = await import(
+  pathToFileURL(`${process.cwd()}/src/lib/conversation/mockConversationProvider.ts`).href
+);
 
 function createMockResponse() {
   const headers = new Map();
@@ -69,7 +72,9 @@ const conversationHandler = conversationModule.createConversationHandler(async (
     targetLanguage: input.request.targetLanguage,
     tone: input.request.tone,
     category: input.request.category ?? 'other',
-    nuance: '友達向けの自然な会話文です。',
+    nuance: toJapanese
+      ? '友達に送ったり、対面で伝えたりしやすい自然な言い方です。'
+      : '適合自然地傳給朋友，也適合面對面表達。',
     alternatives: [],
     readabilityScore: 88,
     needsNativeCheck: true,
@@ -124,6 +129,18 @@ check(
   'literalMeaningはresultTextと別',
   String(generated.literalMeaning ?? '').trim() !== String(generated.resultText ?? '').trim(),
 );
+check('conversation', 'nuanceは非空', String(generated.nuance ?? '').trim().length > 0);
+check('conversation', 'nuanceは対象言語', /[ぁ-んァ-ン]/.test(String(generated.nuance ?? '')));
+check(
+  'conversation',
+  'nuanceはresultTextと別',
+  String(generated.nuance ?? '').trim() !== String(generated.resultText ?? '').trim(),
+);
+check(
+  'conversation',
+  'nuanceはliteralMeaningと別',
+  String(generated.nuance ?? '').trim() !== String(generated.literalMeaning ?? '').trim(),
+);
 check(
   'conversation',
   'API key非露出',
@@ -145,6 +162,60 @@ check(
   /[\u3400-\u9fff]/.test(String(chineseConversationResponse.body?.result?.literalMeaning ?? '')) &&
     !/[ぁ-んァ-ン]/.test(String(chineseConversationResponse.body?.result?.literalMeaning ?? '')),
 );
+check(
+  'conversation',
+  '台湾華語nuance',
+  /[\u3400-\u9fff]/.test(String(chineseConversationResponse.body?.result?.nuance ?? '')) &&
+    !/[ぁ-んァ-ン]/.test(String(chineseConversationResponse.body?.result?.nuance ?? '')),
+);
+
+const missingNuanceHandler = conversationModule.createConversationHandler(async (input) => ({
+  sourceText: input.request.sourceText,
+  resultText: '来年も来てね！',
+  literalMeaning: '来年も来てくださいね。',
+  pinyin: 'míng nián yě yào lái o',
+  sourceLanguage: input.request.sourceLanguage,
+  targetLanguage: input.request.targetLanguage,
+  tone: input.request.tone,
+  category: input.request.category ?? 'other',
+  alternatives: [],
+  readabilityScore: 80,
+  needsNativeCheck: true,
+  reviewStatus: 'needs-native-check',
+  naturalnessNote: null,
+}));
+const normalizedNuanceResponse = await invoke(missingNuanceHandler, { body: validConversation });
+check(
+  'conversation',
+  'nuance欠落を正規化',
+  normalizedNuanceResponse.status === 200 &&
+    String(normalizedNuanceResponse.body?.result?.nuance ?? '').trim().length > 0,
+);
+
+const mockJapanese = await mockConversationModule.mockConversationProvider.generate({
+  sourceText: 'また写真を撮ろう',
+  direction: 'ja-to-zh-TW',
+  tone: 'friendly',
+  category: 'photo',
+});
+const mockTaiwanMandarin = await mockConversationModule.mockConversationProvider.generate({
+  sourceText: '下次也一起玩吧～',
+  direction: 'zh-TW-to-ja',
+  tone: 'friendly',
+  category: 'seeAgain',
+});
+check(
+  'conversation',
+  'mock nuanceは両方向で非空',
+  Boolean(mockJapanese.nuance.trim() && mockTaiwanMandarin.nuance.trim()),
+);
+check(
+  'conversation',
+  'mock nuanceは対象言語',
+  /[\u3400-\u9fff]/.test(mockJapanese.nuance) &&
+    !/[ぁ-んァ-ン]/.test(mockJapanese.nuance) &&
+    /[ぁ-んァ-ン]/.test(mockTaiwanMandarin.nuance),
+);
 
 const duplicateLiteralHandler = conversationModule.createConversationHandler(async (input) => ({
   sourceText: input.request.sourceText,
@@ -155,7 +226,7 @@ const duplicateLiteralHandler = conversationModule.createConversationHandler(asy
   targetLanguage: input.request.targetLanguage,
   tone: input.request.tone,
   category: input.request.category ?? 'other',
-  nuance: null,
+  nuance: '友達に送ったり、対面で伝えたりしやすい自然な言い方です。',
   alternatives: [],
   readabilityScore: 80,
   needsNativeCheck: true,

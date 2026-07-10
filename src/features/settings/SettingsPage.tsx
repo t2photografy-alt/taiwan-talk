@@ -88,6 +88,7 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
   const [audioStatusKey, setAudioStatusKey] = useState<TranslationKey>('settings.notRun');
   const [recordingStatusKey, setRecordingStatusKey] = useState<TranslationKey>('settings.notRun');
   const [isRecording, setIsRecording] = useState(false);
+  const [isPreparingRecording, setIsPreparingRecording] = useState(false);
   const [recordedAudio, setRecordedAudio] = useState<RecordedAudio | null>(null);
   const [voiceStyle, setVoiceStyle] = useState<TtsVoiceStyle>(() => readTtsVoiceStyle());
   const recorderSessionRef = useRef<RecorderSession | null>(null);
@@ -127,6 +128,8 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
   useEffect(() => () => recorderService.releaseRecording(recordedAudio), [recordedAudio]);
 
   const handleSpeechPreview = (style: TtsVoiceStyle, language: TtsLanguage) => {
+    if (isRecording || isPreparingRecording) return;
+
     setVoiceStyle(style);
     writeTtsVoiceStyle(style);
     setAudioStatusKey('settings.speechPlayed');
@@ -173,8 +176,11 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
     recorderService.releaseRecording(recordedAudio);
     setRecordedAudio(null);
     setRecordingStatusKey('settings.checkingMic');
+    setIsPreparingRecording(true);
+    await speechPlayback.stop();
 
     const result = await recorderService.startRecording();
+    setIsPreparingRecording(false);
 
     if (!result.ok) {
       setRecordingStatusKey('settings.maybeUnavailable');
@@ -281,6 +287,7 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
                       return (
                         <PrimaryButton
                           data-testid={`voice-preview-${item.value}-${language}`}
+                          disabled={isRecording || isPreparingRecording}
                           icon={playing ? <Square aria-hidden="true" size={16} /> : <Volume2 aria-hidden="true" size={17} />}
                           variant="soft"
                           onClick={() => handleSpeechPreview(item.value, language)}
@@ -337,6 +344,7 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
 
           <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <PrimaryButton
+              disabled={isRecording || isPreparingRecording}
               icon={<Volume2 aria-hidden="true" size={18} />}
               variant="soft"
               onClick={handleSpeechTest}
@@ -344,9 +352,12 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
               {t('settings.speechTest')}
             </PrimaryButton>
             <PrimaryButton
+              aria-label={isRecording ? t('practice.stopRecording') : t('settings.recordingTest')}
+              data-testid={isRecording ? 'settings-recording-stop' : 'settings-recording-start'}
               icon={isRecording ? <Square aria-hidden="true" size={17} /> : <Mic2 aria-hidden="true" size={18} />}
               variant={isRecording ? 'danger' : 'soft'}
               onClick={handleRecordingTest}
+              disabled={isPreparingRecording}
             >
               {isRecording ? t('cta.stop') : t('settings.recordingTest')}
             </PrimaryButton>

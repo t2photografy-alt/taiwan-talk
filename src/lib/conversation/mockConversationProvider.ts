@@ -30,7 +30,7 @@ function resultForJapanese(request: ConversationRequest): ConversationResult {
       targetLanguage: 'zh-TW',
       tone: request.tone,
       category: request.category,
-      nuance: '短く、友達に向けたあたたかい感謝です。',
+      nuance: '適合用來自然地向朋友表達溫暖的感謝。',
       readabilityScore: 90,
       alternatives: [
         {
@@ -59,7 +59,7 @@ function resultForJapanese(request: ConversationRequest): ConversationResult {
       targetLanguage: 'zh-TW',
       tone: request.tone,
       category: request.category,
-      nuance: '対面やSNS/DMで、自然に写真へ誘う言い方です。',
+      nuance: '適合面對面或在訊息中，自然地邀請朋友一起拍照。',
       readabilityScore: 83,
       alternatives: [
         {
@@ -88,7 +88,7 @@ function resultForJapanese(request: ConversationRequest): ConversationResult {
       targetLanguage: 'zh-TW',
       tone: request.tone,
       category: request.category,
-      nuance: 'パフォーマンスや作品への感想として、よかった気持ちをまっすぐ伝える仮文です。',
+      nuance: '適合自然地表達對表演或作品的欣賞。',
       readabilityScore: 82,
       alternatives: [
         {
@@ -116,7 +116,7 @@ function resultForJapanese(request: ConversationRequest): ConversationResult {
     targetLanguage: 'zh-TW',
     tone: request.tone,
     category: request.category,
-    nuance: '「很想見你」は、会いたかった気持ちをまっすぐ伝える表現です。',
+    nuance: '適合向熟悉的朋友直接表達想再次見面的心情。',
     readabilityScore: 86,
     alternatives: [
       {
@@ -237,7 +237,7 @@ export const mockConversationProvider: ConversationProvider = {
         targetLanguage: 'zh-TW',
         tone: request.tone,
         category: 'dm',
-        nuance: '相手の感謝に、こちらのうれしさを返す自然な返信です。',
+        nuance: '適合自然回應對方的感謝，也表達自己很開心。',
         readabilityScore: 84,
       },
       thanks: {
@@ -249,7 +249,7 @@ export const mockConversationProvider: ConversationProvider = {
         targetLanguage: 'zh-TW',
         tone: request.tone,
         category: 'thanks',
-        nuance: '「こちらこそ」の気持ちをやさしく返します。',
+        nuance: '適合用輕鬆、溫暖的方式回覆朋友的感謝。',
         readabilityScore: 86,
       },
       seeAgain: {
@@ -261,7 +261,7 @@ export const mockConversationProvider: ConversationProvider = {
         targetLanguage: 'zh-TW',
         tone: request.tone,
         category: 'seeAgain',
-        nuance: '次につなげたい気持ちを短く伝えます。',
+        nuance: '適合簡短地向朋友表達還想再見面的心情。',
         readabilityScore: 84,
       },
       askSchedule: {
@@ -273,7 +273,7 @@ export const mockConversationProvider: ConversationProvider = {
         targetLanguage: 'zh-TW',
         tone: request.tone,
         category: 'dm',
-        nuance: '予定を聞く時のストレートな仮文です。',
+        nuance: '適合直接但不失禮地詢問朋友下次見面的時間。',
         readabilityScore: 79,
       },
       softDecline: {
@@ -285,7 +285,7 @@ export const mockConversationProvider: ConversationProvider = {
         targetLanguage: 'zh-TW',
         tone: request.tone,
         category: 'dm',
-        nuance: '断りつつ、会いたい気持ちは残すやわらかい言い方です。',
+        nuance: '適合委婉拒絕，同時保留下次再見面的期待。',
         readabilityScore: 76,
       },
       sendPhoto: {
@@ -297,7 +297,7 @@ export const mockConversationProvider: ConversationProvider = {
         targetLanguage: 'zh-TW',
         tone: request.tone,
         category: 'photo',
-        nuance: 'SNSやDMで写真を送る前に使いやすい返信です。',
+        nuance: '適合在社群訊息或私訊中，回覆朋友稍後會傳照片。',
         readabilityScore: 81,
       },
     };

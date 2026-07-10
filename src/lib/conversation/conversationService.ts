@@ -6,6 +6,7 @@ import type {
   GenerateConversationResponse,
 } from './apiTypes';
 import { mockConversationProvider, type ConversationProvider } from './mockConversationProvider';
+import { normalizeNuance } from './normalizeConversation';
 import type {
   ConversationRequest,
   ConversationResult,
@@ -42,6 +43,10 @@ export type ConversationService = {
 function withNativeCheck(result: ConversationResult): GeneratedConversationResult {
   return {
     ...result,
+    nuance: normalizeNuance(result.nuance, result.tone, result.targetLanguage, [
+      result.resultText,
+      result.literalMeaning,
+    ]),
     needsNativeCheck: true,
     reviewStatus: 'needs-native-check',
     naturalnessNote:
@@ -223,7 +228,10 @@ export function createConversationService(
         pinyin: result.pinyin,
         tone: result.tone,
         category: result.category,
-        nuance: result.nuance,
+        nuance: normalizeNuance(result.nuance, result.tone, result.targetLanguage, [
+          result.resultText,
+          result.literalMeaning,
+        ]),
         readabilityScore: result.readabilityScore,
         needsNativeCheck: result.needsNativeCheck ?? true,
         reviewStatus: result.reviewStatus ?? 'needs-native-check',

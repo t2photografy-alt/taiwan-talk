@@ -200,14 +200,12 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
           >
             {resultWithCategory.resultText}
           </p>
-          {direction === 'zh-TW-to-ja' && resultWithCategory.nuance ? (
-            <div className="mt-4 border-l-4 border-[#f5ae28] pl-3" data-testid="compose-result-nuance">
-              <h3 className="text-xs font-black text-[#667085]">{t('compose.nuance')}</h3>
-              <p className="mt-1 text-sm font-bold leading-relaxed text-[#344054]">
-                {resultWithCategory.nuance}
-              </p>
-            </div>
-          ) : null}
+          <div className="mt-4 border-l-4 border-[#f5ae28] pl-3" data-testid="compose-result-nuance">
+            <h3 className="text-xs font-black text-[#667085]">{t('compose.nuance')}</h3>
+            <p className="mt-1 text-sm font-bold leading-relaxed text-[#344054]">
+              {resultWithCategory.nuance}
+            </p>
+          </div>
           {direction === 'zh-TW-to-ja' && resultWithCategory.literalMeaning ? (
             <div className="mt-3 rounded-[14px] bg-[#f3f6fb] px-3 py-2" data-testid="compose-literal-meaning">
               <h3 className="text-xs font-black text-[#667085]">{t('compose.literalMeaning')}</h3>
@@ -380,14 +378,14 @@ export function ComposePage({ onNavigate, onSaveResult, onDisplayResult }: Compo
         </section>
       ) : null}
 
-      {direction === 'ja-to-zh-TW' ? (
+      {direction === 'ja-to-zh-TW' && !resultWithCategory ? (
         <section className="soft-blue mb-4 rounded-[18px] p-4">
           <div className="flex gap-3">
             <Lightbulb aria-hidden="true" className="mt-1 text-[#f59e0b]" size={24} />
             <div>
               <h2 className="text-sm font-black text-[#141821]">{t('compose.nuance')}</h2>
               <p className="mt-1 text-sm font-bold leading-relaxed text-[#344054]">
-                {resultWithCategory?.nuance ?? t('compose.defaultNuance')}
+                {t('compose.defaultNuance')}
               </p>
             </div>
           </div>

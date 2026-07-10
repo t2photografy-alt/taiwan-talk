@@ -97,6 +97,14 @@ It is not an event-only app. Event conversations are one representative use case
 - `npm run qa:api-contract` checks conversation and speech handler contracts locally without calling OpenAI
 - Voice naturalness and the audible difference between the two voice styles remain Android device and human review items
 
+## Phase 3E-2 Status
+
+- Conversation results now keep three separate roles: `resultText` for use, `nuance` for tone and usage, and `literalMeaning` for checking source meaning
+- Missing, duplicated, or wrong-language nuance text is normalized once at the conversation boundary
+- Compose always shows a non-empty nuance block for generated results
+- Starting a recording stops active or loading speech first; read-aloud controls remain disabled while recording
+- Recording and speech stop controls use stable test IDs and distinct accessible names
+
 ## Display Language And Conversation Direction
 
 - Display language changes app UI labels between Japanese and Taiwan Mandarin.

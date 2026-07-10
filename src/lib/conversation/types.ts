@@ -72,7 +72,7 @@ export type ConversationResult = {
   targetLanguage: LanguageCode;
   tone: Tone;
   category: PhraseCategory;
-  nuance?: string;
+  nuance: string;
   alternatives?: Array<{
     label: string;
     resultText: string;

@@ -42,9 +42,12 @@ export function useSpeechPlayback() {
     );
     setProvider(undefined);
     speechService.stop();
-    window.setTimeout(() => {
-      if (requestSequenceRef.current === requestSequence) setPlayback(idlePlayback);
-    }, 0);
+    return new Promise<void>((resolve) => {
+      window.setTimeout(() => {
+        if (requestSequenceRef.current === requestSequence) setPlayback(idlePlayback);
+        resolve();
+      }, 0);
+    });
   }, []);
 
   const toggle = useCallback(

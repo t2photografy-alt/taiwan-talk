@@ -30,7 +30,7 @@ type PracticePageProps = {
   onMarkPracticed: (phraseId: string) => Promise<void>;
 };
 
-type RecordingUiState = 'idle' | 'recording' | 'recorded' | 'checking' | 'error';
+type RecordingUiState = 'idle' | 'starting' | 'recording' | 'recorded' | 'checking' | 'error';
 
 function Waveform({ active = false }: { active?: boolean }) {
   const heights = [14, 22, 34, 52, 30, 18, 42, 26, 16, 36, 20];
@@ -87,6 +87,7 @@ export function PracticePage({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { t } = useDisplayLanguage();
   const speechPlayback = useSpeechPlayback();
+  const speechLockedForRecording = recordingState === 'starting' || recordingState === 'recording';
   const practiceText = getMandarinText(selectedPhrase);
   const supportText =
     practiceText === selectedPhrase.resultText ? selectedPhrase.sourceText : selectedPhrase.resultText;
@@ -144,10 +145,15 @@ export function PracticePage({
   }
 
   async function startRecording() {
-    speechPlayback.stop();
+    if (speechLockedForRecording || recordingState === 'checking') {
+      return;
+    }
+
+    setRecordingState('starting');
     setNotice('');
     setResult(null);
     setRecorderNotice('');
+    await speechPlayback.stop();
     clearRecordedAudio();
 
     const started = await recorderService.startRecording();
@@ -291,16 +297,18 @@ export function PracticePage({
             data-speech-language="zh-TW"
             data-speech-text={practiceText}
             data-testid="practice-main-listen"
+            disabled={speechLockedForRecording}
             icon={<Volume2 aria-hidden="true" size={18} />}
             variant="blue"
-            onClick={() =>
-              speechPlayback.toggle({
+            onClick={() => {
+              if (speechLockedForRecording) return;
+              void speechPlayback.toggle({
                 phraseId: selectedPhrase.id,
                 text: practiceText,
                 language: 'zh-TW',
                 speed: 'normal',
-              })
-            }
+              });
+            }}
           >
             {speechPlayback.isLoading(selectedPhrase.id, 'normal')
               ? t('cta.loading')
@@ -314,16 +322,18 @@ export function PracticePage({
             data-speech-language="zh-TW"
             data-speech-text={practiceText}
             data-testid="practice-main-slow"
+            disabled={speechLockedForRecording}
             icon={<Clock3 aria-hidden="true" size={18} />}
             variant="soft"
-            onClick={() =>
-              speechPlayback.toggle({
+            onClick={() => {
+              if (speechLockedForRecording) return;
+              void speechPlayback.toggle({
                 phraseId: selectedPhrase.id,
                 text: practiceText,
                 language: 'zh-TW',
                 speed: 'slow',
-              })
-            }
+              });
+            }}
           >
             {speechPlayback.isLoading(selectedPhrase.id, 'slow')
               ? t('cta.loading')
@@ -351,20 +361,23 @@ export function PracticePage({
         <p className="mt-1 text-xs font-bold text-[#667085]">
           {recordingState === 'recording'
             ? t('practice.recording')
-            : recordingState === 'recorded'
-              ? t('practice.recorded')
-              : recordingState === 'checking'
-                ? t('practice.checking')
-                : t('practice.recordingIdle')}
+            : recordingState === 'starting'
+              ? t('practice.preparingRecording')
+              : recordingState === 'recorded'
+                ? t('practice.recorded')
+                : recordingState === 'checking'
+                  ? t('practice.checking')
+                  : t('practice.recordingIdle')}
         </p>
         <div className="mt-2 grid grid-cols-[1fr_92px_1fr] items-center gap-3">
           <Waveform active={recordingState === 'recording'} />
           <button
-            aria-label={recordingState === 'recording' ? t('cta.stop') : t('practice.startRecording')}
+            aria-label={recordingState === 'recording' ? t('practice.stopRecording') : t('practice.startRecording')}
             className={[
               'grid h-[92px] w-[92px] place-items-center rounded-full text-white shadow-[0_16px_30px_rgba(239,31,36,0.28)] transition focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-200',
               recordingState === 'recording' ? 'bg-[#b91c1c]' : 'bg-[var(--brand-red)]',
             ].join(' ')}
+            data-testid={recordingState === 'recording' ? 'practice-recording-stop' : 'practice-recording-start'}
             type="button"
             onClick={() => {
               if (recordingState === 'recording') {
@@ -373,7 +386,7 @@ export function PracticePage({
               }
               void startRecording();
             }}
-            disabled={recordingState === 'checking'}
+            disabled={recordingState === 'checking' || recordingState === 'starting'}
           >
             {recordingState === 'recording' ? (
               <Square aria-hidden="true" fill="currentColor" size={36} strokeWidth={2.6} />
@@ -384,18 +397,6 @@ export function PracticePage({
           <Waveform active={recordingState === 'recording'} />
         </div>
         <p className="mt-2 text-sm font-bold text-[#344054]">{formatSeconds(recordingSeconds)}</p>
-
-        {recordingState === 'recording' ? (
-          <PrimaryButton
-            className="mt-3"
-            fullWidth
-            icon={<Square aria-hidden="true" fill="currentColor" size={16} />}
-            variant="danger"
-            onClick={() => void stopRecording()}
-          >
-            {t('cta.stop')}
-          </PrimaryButton>
-        ) : null}
 
         {recordedAudio ? (
           <div className="mt-3 space-y-2">
